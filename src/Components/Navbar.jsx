@@ -5,7 +5,7 @@ import axios from "axios";
 export const Navbar = () => {
   const [activeIndex, setActiveIndex] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [selectedOption, setSelectedOption] = useState("default"); // Toggle Default/Product
+  const [selectedOption, setSelectedOption] = useState("default");
   const [formData, setFormData] = useState({
     work: "",
     amount: "",
@@ -24,7 +24,6 @@ export const Navbar = () => {
     setActiveIndex(index);
   };
 
-  // Fetch items from MongoDB
   const fetchCartItems = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/items");
@@ -34,12 +33,10 @@ export const Navbar = () => {
     }
   };
 
-  // Handle form input change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission
   const handleSubmit = async () => {
     try {
       await axios.post("http://localhost:5000/api/add", {
@@ -47,8 +44,8 @@ export const Navbar = () => {
         ...formData,
       });
       alert("Item added successfully!");
-      fetchCartItems(); // Refresh cart items
-      setShowForm(false); // Close form after submission
+      fetchCartItems();
+      setShowForm(false);
       setFormData({ work: "", amount: "", time: "", productName: "", price: "", quantity: "" });
     } catch (error) {
       console.error("Error adding item:", error);
@@ -59,12 +56,9 @@ export const Navbar = () => {
     <div>
       {showForm ? (
         <div className="p-6 bg-black min-h-screen text-white">
-          {/* Back Button */}
           <button onClick={() => setShowForm(false)} className="flex items-center text-cyan-400 mb-4">
             <FaArrowLeft className="mr-2" /> Back
           </button>
-
-          {/* Toggle Buttons */}
           <div className="flex justify-center items-center space-x-4 mb-6">
             <button
               onClick={() => setSelectedOption("default")}
@@ -80,111 +74,40 @@ export const Navbar = () => {
               Product
             </button>
           </div>
-
-          {/* Conditional Form Rendering */}
           {selectedOption === "default" ? (
             <div className="space-y-4">
-              <input
-                type="text"
-                name="work"
-                placeholder="Work to be Done"
-                value={formData.work}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <input
-                type="text"
-                name="amount"
-                placeholder="Amount"
-                value={formData.amount}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <input
-                type="text"
-                name="time"
-                placeholder="Within How much Time"
-                value={formData.time}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <button onClick={handleSubmit} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full">
-                ADD
-              </button>
+              <input type="text" name="work" placeholder="Work to be Done" value={formData.work} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <input type="text" name="amount" placeholder="Amount" value={formData.amount} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <input type="text" name="time" placeholder="Within How much Time" value={formData.time} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <button onClick={handleSubmit} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full">ADD</button>
             </div>
           ) : (
             <div className="space-y-4">
-              <input
-                type="text"
-                name="productName"
-                placeholder="Product Name"
-                value={formData.productName}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <input
-                type="text"
-                name="price"
-                placeholder="Price"
-                value={formData.price}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <input
-                type="text"
-                name="quantity"
-                placeholder="Quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full"
-              />
-              <button onClick={handleSubmit} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full">
-                ADD
-              </button>
+              <input type="text" name="productName" placeholder="Product Name" value={formData.productName} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <input type="text" name="price" placeholder="Price" value={formData.price} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <input type="text" name="quantity" placeholder="Quantity" value={formData.quantity} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
+              <button onClick={handleSubmit} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full">ADD</button>
             </div>
           )}
         </div>
       ) : (
-        // Navbar
         <div className="fixed bottom-0 left-0 w-full flex justify-around items-center bg-black py-4 rounded-t-2xl shadow-[0_-2.2rem_10px_rgba(0,255,255,0.5)]">
-          {[
-            { icon: FaHome },
-            { icon: FaChartBar },
-            { icon: FaPlus, isAdd: true },
-            { icon: FaShoppingCart },
-            { icon: FaUser },
-          ].map(({ icon: Icon, isAdd }, index) => (
-            <div
-              key={index}
-              className={`relative p-2 group ${isAdd ? "bg-cyan-400 p-3 rounded-full text-black shadow-lg" : ""}`}
-              onClick={() => (isAdd ? setShowForm(true) : handleClick(index))}
-            >
+          {[{ icon: FaHome }, { icon: FaChartBar }, { icon: FaPlus, isAdd: true }, { icon: FaShoppingCart }, { icon: FaUser }].map(({ icon: Icon, isAdd }, index) => (
+            <div key={index} className={`relative p-2 group ${isAdd ? "bg-cyan-400 p-3 rounded-full text-black shadow-lg" : ""}`} onClick={() => (isAdd ? setShowForm(true) : handleClick(index))}>
               <Icon className={`${isAdd ? "text-black text-3xl" : "text-cyan-400 text-[1.65rem]"} transition-transform duration-300 ${activeIndex === index ? "-translate-y-2 text-cyan-300" : ""} group-hover:-translate-y-1 group-hover:text-cyan-300`} />
-              {!isAdd && (
-                <div className={`absolute left-1/2 bottom-0 w-12 h-1 bg-cyan-400 rounded opacity-0 transform -translate-x-1/2 transition-opacity duration-300 ${activeIndex === index ? "opacity-100" : "group-hover:opacity-100"}`} />
-              )}
             </div>
           ))}
         </div>
       )}
-
-      {/* Shopping Cart Display */}
-      {activeIndex === 3 && (
+      {activeIndex === 0 && (
         <div className="p-6 bg-black min-h-screen text-white">
-          <h2 className="text-lg font-bold mb-4">Shopping Cart</h2>
-          {cartItems.length === 0 ? (
-            <p>No items in the cart</p>
-          ) : (
-            <ul>
-              {cartItems.map((item, index) => (
-                <li key={index} className="mb-2">
-                  {item.type === "default"
-                    ? `${item.work} - $${item.amount} (Time: ${item.time})`
-                    : `${item.productName} - $${item.price} (Qty: ${item.quantity})`}
-                </li>
-              ))}
-            </ul>
-          )}
+          {cartItems.filter(item => item.type === "default").map((item, index) => (
+            <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md relative">
+              <p className="font-bold">{item.work}</p>
+              <p className="text-yellow-400">${item.amount}</p>
+              <p className="text-gray-400">{item.time} hrs</p>
+            </div>
+          ))}
         </div>
       )}
     </div>
