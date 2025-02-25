@@ -64,7 +64,7 @@ export const Navbar = () => {
               onClick={() => setSelectedOption("default")}
               className={`px-4 py-2 rounded-lg ${selectedOption === "default" ? "bg-cyan-400 text-black" : "bg-gray-700 text-white"}`}
             >
-              Default
+              Work
             </button>
             <span className="text-cyan-400">|</span>
             <button
@@ -74,7 +74,7 @@ export const Navbar = () => {
               Product
             </button>
           </div> 
-          
+
           {selectedOption === "default" ? (
             <div className="space-y-4">
               <input type="text" name="work" placeholder="Work to be Done" value={formData.work} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
