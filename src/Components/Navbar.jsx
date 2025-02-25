@@ -73,7 +73,8 @@ export const Navbar = () => {
             >
               Product
             </button>
-          </div>
+          </div> 
+          
           {selectedOption === "default" ? (
             <div className="space-y-4">
               <input type="text" name="work" placeholder="Work to be Done" value={formData.work} onChange={handleChange} className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" />
