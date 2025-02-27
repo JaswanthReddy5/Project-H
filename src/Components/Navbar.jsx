@@ -71,7 +71,8 @@ export const Navbar = () => {
               onClick={() => setSelectedOption("product")}
               className={`px-4 py-2 rounded-lg ${selectedOption === "product" ? "bg-cyan-400 text-black" : "bg-gray-700 text-white"}`}
             >
-              Product
+              Product 
+              
             </button>
           </div> 
 
