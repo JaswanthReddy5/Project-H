@@ -52,6 +52,21 @@ export const Navbar = () => {
     }
   };
 
+  // Function to start chat
+  const startChat = async (sellerId, itemId) => {
+    try {
+      const userId = "currentUserId"; // Replace with actual logged-in user ID
+      const response = await axios.post("http://localhost:5000/api/start-chat", { sellerId, userId, itemId });
+
+      if (response.data.chatId) {
+        alert(`Chat started with ID: ${response.data.chatId}`);
+      }
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      alert("Failed to start chat");
+    }
+  };
+
   return (
     <div>
       {showForm ? (
@@ -72,7 +87,6 @@ export const Navbar = () => {
               className={`px-4 py-2 rounded-lg ${selectedOption === "product" ? "bg-cyan-400 text-black" : "bg-gray-700 text-white"}`}
             >
               Product 
-              
             </button>
           </div> 
 
@@ -107,7 +121,28 @@ export const Navbar = () => {
             <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md relative">
               <p className="font-bold">{item.work}</p>
               <p className="text-yellow-400">${item.amount}</p>
-              <p className="text-gray-400">{item.time} hrs</p>
+              <p className="text-gray-400">{item.time} </p>
+            </div>
+          ))}
+        </div>
+      )}
+      {activeIndex === 3 && (
+        <div className="p-6 bg-black min-h-screen text-white z-0">
+          {cartItems.filter(item => item.type === "product").map((item, index) => (
+           <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start">
+
+
+              <p className="font-bold">{item.productName}</p>
+              <p className="text-yellow-400">${item.price}</p>
+              <p className="text-gray-400">Quantity: {item.quantity}</p>
+              <button 
+  onClick={() => startChat(item.sellerId, item._id)} 
+  className="bg-cyan-400 text-black px-4 py-2 rounded mt-4"
+>
+  Accept
+</button>
+
+
             </div>
           ))}
         </div>
