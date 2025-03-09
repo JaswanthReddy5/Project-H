@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus, FaArrowLeft } from "react-icons/fa";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export const Navbar = () => {
+  const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedOption, setSelectedOption] = useState("default");
@@ -59,7 +61,7 @@ export const Navbar = () => {
       const response = await axios.post("http://localhost:5000/api/start-chat", { sellerId, userId, itemId });
 
       if (response.data.chatId) {
-        alert(`Chat started with ID: ${response.data.chatId}`);
+        navigate(`/chat/${response.data.chatId}`);
       }
     } catch (error) {
       console.error("Error starting chat:", error);
@@ -116,9 +118,9 @@ export const Navbar = () => {
         </div>
       )}
       {activeIndex === 0 && (
-        <div className="p-6 bg-black min-h-screen text-white">
+        <div className="p-6 bg-black min-h-screen text-white z-0">
           {cartItems.filter(item => item.type === "default").map((item, index) => (
-            <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md relative">
+            <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start">
               <p className="font-bold">{item.work}</p>
               <p className="text-yellow-400">${item.amount}</p>
               <p className="text-gray-400">{item.time} </p>
