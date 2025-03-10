@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus, FaArrowLeft } from "react-icons/fa";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { RestaurantList } from "./RestaurantList";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export const Navbar = () => {
     quantity: "",
   });
   const [cartItems, setCartItems] = useState([]);
+  const [cartError, setCartError] = useState(null);
 
   useEffect(() => {
     fetchCartItems();
@@ -28,10 +30,12 @@ export const Navbar = () => {
 
   const fetchCartItems = async () => {
     try {
+      setCartError(null);
       const response = await axios.get("http://localhost:5000/api/items");
       setCartItems(response.data);
     } catch (error) {
       console.error("Error fetching cart items:", error);
+      setCartError("Failed to connect to the server. Please make sure the backend server is running.");
     }
   };
 
@@ -70,7 +74,7 @@ export const Navbar = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-black">
       {showForm ? (
         <div className="p-6 bg-black min-h-screen text-white">
           <button onClick={() => setShowForm(false)} className="flex items-center text-cyan-400 mb-4">
@@ -109,45 +113,58 @@ export const Navbar = () => {
           )}
         </div>
       ) : (
-        <div className="fixed bottom-0 left-0 w-full flex justify-around items-center bg-black py-4 rounded-t-2xl shadow-[0_-2.2rem_10px_rgba(0,255,255,0.5)]">
-          {[{ icon: FaHome }, { icon: FaChartBar }, { icon: FaPlus, isAdd: true }, { icon: FaShoppingCart }, { icon: FaUser }].map(({ icon: Icon, isAdd }, index) => (
-            <div key={index} className={`relative p-2 group ${isAdd ? "bg-cyan-400 p-3 rounded-full text-black shadow-lg" : ""}`} onClick={() => (isAdd ? setShowForm(true) : handleClick(index))}>
-              <Icon className={`${isAdd ? "text-black text-3xl" : "text-cyan-400 text-[1.65rem]"} transition-transform duration-300 ${activeIndex === index ? "-translate-y-2 text-cyan-300" : ""} group-hover:-translate-y-1 group-hover:text-cyan-300`} />
-            </div>
-          ))}
-        </div>
-      )}
-      {activeIndex === 0 && (
-        <div className="p-6 bg-black min-h-screen text-white z-0">
-          {cartItems.filter(item => item.type === "default").map((item, index) => (
-            <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start">
-              <p className="font-bold">{item.work}</p>
-              <p className="text-yellow-400">${item.amount}</p>
-              <p className="text-gray-400">{item.time} </p>
-            </div>
-          ))}
-        </div>
-      )}
-      {activeIndex === 3 && (
-        <div className="p-6 bg-black min-h-screen text-white z-0">
-          {cartItems.filter(item => item.type === "product").map((item, index) => (
-           <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start">
-
-
-              <p className="font-bold">{item.productName}</p>
-              <p className="text-yellow-400">${item.price}</p>
-              <p className="text-gray-400">Quantity: {item.quantity}</p>
-              <button 
-  onClick={() => startChat(item.sellerId, item._id)} 
-  className="bg-cyan-400 text-black px-4 py-2 rounded mt-4"
->
-  Accept
-</button>
-
-
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="pb-20">
+            {activeIndex === 0 && (
+              <div className="p-6 text-white">
+                {cartError ? (
+                  <div className="flex flex-col items-center justify-center h-64">
+                    <div className="text-red-400 text-xl mb-4">{cartError}</div>
+                    <button 
+                      onClick={fetchCartItems}
+                      className="bg-cyan-400 text-black px-4 py-2 rounded-lg hover:bg-cyan-300"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  cartItems.filter(item => item.type === "default").map((item, index) => (
+                    <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start mb-4">
+                      <p className="font-bold">{item.work}</p>
+                      <p className="text-yellow-400">${item.amount}</p>
+                      <p className="text-gray-400">{item.time}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+            {activeIndex === 1 && <RestaurantList />}
+            {activeIndex === 3 && (
+              <div className="p-6 text-white">
+                {cartItems.filter(item => item.type === "product").map((item, index) => (
+                  <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start mb-4">
+                    <p className="font-bold">{item.productName}</p>
+                    <p className="text-yellow-400">${item.price}</p>
+                    <p className="text-gray-400">Quantity: {item.quantity}</p>
+                    <button 
+                      onClick={() => startChat(item.sellerId, item._id)} 
+                      className="bg-cyan-400 text-black px-4 py-2 rounded mt-4"
+                    >
+                      Accept
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="fixed bottom-0 left-0 w-full flex justify-around items-center bg-black py-4 rounded-t-2xl shadow-[0_-2.2rem_10px_rgba(0,255,255,0.5)]">
+            {[{ icon: FaHome }, { icon: FaChartBar }, { icon: FaPlus, isAdd: true }, { icon: FaShoppingCart }, { icon: FaUser }].map(({ icon: Icon, isAdd }, index) => (
+              <div key={index} className={`relative p-2 group ${isAdd ? "bg-cyan-400 p-3 rounded-full text-black shadow-lg" : ""}`} onClick={() => (isAdd ? setShowForm(true) : handleClick(index))}>
+                <Icon className={`${isAdd ? "text-black text-3xl" : "text-cyan-400 text-[1.65rem]"} transition-transform duration-300 ${activeIndex === index ? "-translate-y-2 text-cyan-300" : ""} group-hover:-translate-y-1 group-hover:text-cyan-300`} />
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
