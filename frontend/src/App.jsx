@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import {Navbar} from "./Components/Navbar";
 import ChatPage from "./pages/ChatPage";  // ✅ Corrected case-sensitive import
 
