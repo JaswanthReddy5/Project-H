@@ -48,11 +48,9 @@ const MessageSchema = new mongoose.Schema({
 const RestaurantSchema = new mongoose.Schema({
   name: String,
   description: String,
-  menu: [{
-    item: String,
-    price: String
-  }],
-  image: String,
+  imageUrl: String,
+  menuUrl: String,
+  phoneNumber: String,
   category: String,
   createdAt: { type: Date, default: Date.now }
 });
@@ -127,44 +125,74 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 // Restaurant routes with better error handling
 app.get("/api/restaurants", async (req, res) => {
   try {
-    console.log("Fetching restaurants...");
-    const restaurants = await Restaurant.find().sort({ createdAt: -1 });
-    console.log("Found restaurants:", restaurants.length);
-    // Add sample data if no restaurants exist
+    // Clear existing restaurants first
+    await Restaurant.deleteMany({});
+    console.log("Cleared existing restaurants");
+
+    // Check if restaurants exist
+    let restaurants = await Restaurant.find();
+    
+    // Add sample data since we cleared the collection
+    const sampleRestaurants = [
+      {
+        name: "Milan",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "file:///home/jaswanth/Downloads/DocScanner%2012-Mar-2025%2019-11%20(1).pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567890"
+      },
+      {
+        name: "Google+",
+        description: "Authentic Chinese cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://example.com/menu2.pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Chinese",
+        phoneNumber: "+1234567891"
+      },
+      {
+        name: "Quanes coort",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      },
+      {
+        name: "Butty",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      },
+      {
+        name: "Kings Plaza",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      },
+      {
+        name: "Butty",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      }
+    ];
+
     if (restaurants.length === 0) {
-      const sampleRestaurants = [
-        {
-          name: "Tasty Bites",
-          description: "Delicious food at great prices",
-          menuItems: [
-            { name: "Burger", price: 12.99 },
-            { name: "Pizza", price: 15.99 },
-            { name: "Pasta", price: 13.99 }
-          ],
-          imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop",
-          category: "Fast Food",
-          phoneNumber: "+1234567890",
-          menuUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop"
-        },
-        {
-          name: "Pizza Paradise",
-          description: "Best pizza in town",
-          menuItems: [
-            { name: "Margherita", price: 14.99 },
-            { name: "Pepperoni", price: 16.99 },
-            { name: "Vegetarian", price: 15.99 }
-          ],
-          imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop",
-          category: "Italian",
-          phoneNumber: "+1987654321",
-          menuUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop"
-        }
-      ];
+      restaurants = await Restaurant.create(sampleRestaurants);
+      console.log("Added sample restaurants:", restaurants.map(r => r.name).join(", "));
     }
+
     res.json(restaurants);
-  } catch (err) {
-    console.error("Error in GET /api/restaurants:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("Error in /api/restaurants:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
