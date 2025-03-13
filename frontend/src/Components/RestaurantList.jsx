@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaPhone } from "react-icons/fa";
+import DocumentViewer from "./DocumentViewer";
+
+// Get the server URL from environment or use a fallback
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+
+const extractGoogleDriveFileId = (url) => {
+  const regex =
+    /(?:https?:\/\/)?(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=|preview\/)|(?:docs|drive)\.google\.com\/.*?\/d\/)([a-zA-Z0-9_-]+)/;
+
+  const match = url.match(regex);
+  return match ? match[1] : null; // Return the file ID or null if not found
+};
 
 export const RestaurantList = () => {
   const [restaurants, setRestaurants] = useState([]);
@@ -14,7 +26,7 @@ export const RestaurantList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get("http://localhost:5000/api/restaurants");
+      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);
       } else {
@@ -51,7 +63,15 @@ export const RestaurantList = () => {
 
   const handleMenuClick = (menuUrl) => {
     if (menuUrl) {
-      window.open(menuUrl, '_blank');
+      const fileId = extractGoogleDriveFileId(menuUrl);
+      if (fileId) {
+        setSelectedMenu(fileId);
+      } else if (menuUrl.startsWith('http')) {
+        // For non-Google Drive URLs, open in new tab
+        window.open(menuUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        alert('Invalid menu URL format. Please use a Google Drive link or direct PDF URL.');
+      }
     } else {
       alert('Menu not available');
     }
@@ -124,33 +144,16 @@ export const RestaurantList = () => {
 
           {/* Menu Modal */}
           {selectedMenu && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="bg-gray-800 p-6 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-white">{selectedMenu.name} - Menu</h2>
-                  <button
-                    onClick={closeMenu}
-                    className="text-gray-400 hover:text-white text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="grid gap-4">
-                  {selectedMenu.menuItems.map((item, index) => (
-                    <div key={index} className="bg-gray-700 p-4 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">{item.name}</h3>
-                          {item.description && (
-                            <p className="text-gray-400 mt-1">{item.description}</p>
-                          )}
-                        </div>
-                        <div className="text-cyan-400 font-bold">
-                          ${item.price.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 md:p-0">
+              <div className="bg-gray-800 rounded-lg w-full md:w-[90vw] h-[90vh] relative">
+                <button
+                  onClick={closeMenu}
+                  className="absolute -top-10 right-0 text-gray-400 hover:text-white text-2xl z-10 p-4 md:p-2"
+                >
+                  ✕
+                </button>
+                <div className="w-full h-full overflow-hidden rounded-lg">
+                  <DocumentViewer documentId={selectedMenu} />
                 </div>
               </div>
             </div>

@@ -1,11 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Serve static files from the 'public' directory
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB with better error handling
 mongoose.connect(process.env.MONGO_URI)
@@ -135,34 +143,59 @@ app.get("/api/restaurants", async (req, res) => {
     // Add sample data since we cleared the collection
     const sampleRestaurants = [
       {
-        name: "Milan",
+        name: "Andra Tiffins&Snakes",
         description: "Authentic Hyderabadi Biryani and Indian cuisine",
         imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "file:///home/jaswanth/Downloads/DocScanner%2012-Mar-2025%2019-11%20(1).pdf", // You'll replace this with your actual menu PDF/image URL
+        menuUrl: "https://drive.google.com/file/d/1hkMRslqFPQ76LrfJ4UNvfErongZ6_ZH3/view?usp=sharing", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "9059937090"
+      },
+      {
+        name: "Sunny Days",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://drive.google.com/file/d/1hG9vdTpduY-CYbWtJgu2pAMwhdQCAPiU/view?usp=sharing",
         category: "Indian",
         phoneNumber: "+1234567890"
       },
       {
-        name: "Google+",
+        name: "Butty",
         description: "Authentic Chinese cuisine",
         imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "https://example.com/menu2.pdf", // You'll replace this with your actual menu PDF/image URL
+        menuUrl: "https://drive.google.com/file/d/1h0JKN3MjiK0jGc9mjusumERr-JT1dh3p/view",
         category: "Chinese",
         phoneNumber: "+1234567891"
       },
       {
-        name: "Quanes coort",
+        name: "Milan",
         description: "Authentic Hyderabadi Biryani and Indian cuisine",
         imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        menuUrl: "https://drive.google.com/file/d/1hh3c9Do16vpuK-Z1PYPu7B48zd9dHJRX/view?usp=sharing",
         category: "Indian",
         phoneNumber: "+1234567892"
       },
       {
-        name: "Butty",
+        name: "google+",
         description: "Authentic Hyderabadi Biryani and Indian cuisine",
         imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        menuUrl: "https://drive.google.com/file/d/1hjWV0mtwOWq_I37ntFQ1LsKPEU9-QIY7/view?usp=sharing", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      },
+      
+      {
+        name: "Chocomans Cakes",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://drive.google.com/file/d/1hlI-R4sQoXKbaV5CzCyIL-kYTIonUspw/view?usp=sharing", // You'll replace this with your actual menu PDF/image URL
+        category: "Indian",
+        phoneNumber: "+1234567892"
+      },
+      {
+        name: "Sohana Biryani House",
+        description: "Authentic Hyderabadi Biryani and Indian cuisine",
+        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        menuUrl: "https://drive.google.com/file/d/1hlB_Pe4PqzhiD8TYoMzKJ7hTuQYC1nxT/view?usp=sharing", // You'll replace this with your actual menu PDF/image URL
         category: "Indian",
         phoneNumber: "+1234567892"
       },
@@ -170,15 +203,7 @@ app.get("/api/restaurants", async (req, res) => {
         name: "Kings Plaza",
         description: "Authentic Hyderabadi Biryani and Indian cuisine",
         imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
-        category: "Indian",
-        phoneNumber: "+1234567892"
-      },
-      {
-        name: "Butty",
-        description: "Authentic Hyderabadi Biryani and Indian cuisine",
-        imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-        menuUrl: "https://example.com/menu.pdf", // You'll replace this with your actual menu PDF/image URL
+        menuUrl: "https://drive.google.com/file/d/1hlB_Pe4PqzhiD8TYoMzKJ7hTuQYC1nxT/view?usp=sharing", // You'll replace this with your actual menu PDF/image URL
         category: "Indian",
         phoneNumber: "+1234567892"
       }
