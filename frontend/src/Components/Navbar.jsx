@@ -4,6 +4,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { RestaurantList } from "./RestaurantList";
 
+// Get the server URL from environment or use a fallback
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+
 export const Navbar = () => {
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(null);
@@ -31,7 +34,7 @@ export const Navbar = () => {
   const fetchCartItems = async () => {
     try {
       setCartError(null);
-      const response = await axios.get("http://localhost:5000/api/items");
+      const response = await axios.get(`${SERVER_URL}/api/items`);
       setCartItems(response.data);
     } catch (error) {
       console.error("Error fetching cart items:", error);
@@ -45,7 +48,7 @@ export const Navbar = () => {
 
   const handleSubmit = async () => {
     try {
-      await axios.post("http://localhost:5000/api/add", {
+      await axios.post(`${SERVER_URL}/api/add`, {
         type: selectedOption,
         ...formData,
       });
@@ -62,7 +65,7 @@ export const Navbar = () => {
   const startChat = async (sellerId, itemId) => {
     try {
       const userId = "currentUserId"; // Replace with actual logged-in user ID
-      const response = await axios.post("http://localhost:5000/api/start-chat", { sellerId, userId, itemId });
+      const response = await axios.post(`${SERVER_URL}/api/start-chat`, { sellerId, userId, itemId });
 
       if (response.data.chatId) {
         navigate(`/chat/${response.data.chatId}`);

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 
+// Get the server URL from environment or use a fallback
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+
 const ChatPage = () => {
   const { chatId } = useParams();
   const [messages, setMessages] = useState([]);
@@ -14,7 +17,7 @@ const ChatPage = () => {
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/chat/${chatId}/messages`);
+      const response = await axios.get(`${SERVER_URL}/api/chat/${chatId}/messages`);
       setMessages(response.data);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -26,7 +29,7 @@ const ChatPage = () => {
     if (!newMessage.trim()) return;
 
     try {
-      await axios.post(`http://localhost:5000/api/chat/${chatId}/messages`, {
+      await axios.post(`${SERVER_URL}/api/chat/${chatId}/messages`, {
         content: newMessage,
         senderId: "currentUserId" // Replace with actual user ID
       });
