@@ -164,7 +164,7 @@ app.get("/api/restaurants", async (req, res) => {
         {
           name: "Sunny Days",
           description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+          imageUrl: "https://drive.google.com/file/d/1mdM-vRwzpDbmNH-ibWU1iMbCp4eeQwwy/view?usp=sharing",
           menuUrl: "https://drive.google.com/file/d/1hG9vdTpduY-CYbWtJgu2pAMwhdQCAPiU/view?usp=sharing",
           category: "Indian",
           phoneNumber: "9381878144"
