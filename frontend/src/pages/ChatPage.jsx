@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FaArrowLeft } from "react-icons/fa";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
 
 const ChatPage = () => {
   const { chatId } = useParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   
@@ -40,9 +42,19 @@ const ChatPage = () => {
     }
   };
 
+  const handleBack = () => {
+    navigate(-1); // Go back to previous page
+  };
+
   return (
     <div className="flex flex-col h-screen bg-black text-white">
-      <div className="p-4 border-b border-cyan-400">
+      <div className="p-4 border-b border-cyan-400 flex items-center">
+        <button 
+          onClick={handleBack}
+          className="mr-4 text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          <FaArrowLeft className="text-xl" />
+        </button>
         <h1 className="text-xl font-bold">Chat #{chatId}</h1>
       </div>
       

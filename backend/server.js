@@ -2,7 +2,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
+const { auth, isAdmin } = require("./middleware/auth");
+const contentModeration = require("./middleware/contentModeration");
 
 const app = express();
 app.use(express.json());
@@ -255,6 +259,81 @@ app.get("/api/test", (req, res) => {
 // Add a basic health check route
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
+});
+
+// User routes
+app.post("/api/register", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const user = new User({ username, email, password });
+    await user.save();
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    res.status(201).json({ user, token });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    
+    if (!user || !(await user.comparePassword(password))) {
+      throw new Error("Invalid login credentials");
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    res.json({ user, token });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Protected routes with authentication and content moderation
+app.post("/api/chats", auth, contentModeration, async (req, res) => {
+  try {
+    const chat = new Chat({
+      ...req.body,
+      userId: req.user._id
+    });
+    await chat.save();
+    res.status(201).json(chat);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/messages", auth, contentModeration, async (req, res) => {
+  try {
+    const message = new Message({
+      ...req.body,
+      userId: req.user._id
+    });
+    await message.save();
+    res.status(201).json(message);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Admin routes
+app.get("/api/admin/users", auth, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, '-password');
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
+  try {
+    await Message.findByIdAndDelete(req.params.id);
+    res.json({ message: "Message deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Start server with better error handling
