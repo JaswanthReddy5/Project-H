@@ -118,7 +118,7 @@ export const RestaurantList = () => {
                   className="w-full h-48 object-cover"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
+                    e.target.src = "https://placehold.co/400x300/1a1a1a/ffffff?text=No+Image";
                   }}
                 />
                 <div className="p-4">
