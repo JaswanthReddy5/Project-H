@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus, FaArrowLeft } from "react-icons/fa";
+import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus, FaArrowLeft, FaSignOutAlt } from "react-icons/fa";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { RestaurantList } from "./RestaurantList";
+import { useAuth } from "../context/AuthContext";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [activeIndex, setActiveIndex] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedOption, setSelectedOption] = useState("default");
@@ -22,6 +24,7 @@ export const Navbar = () => {
   });
   const [cartItems, setCartItems] = useState([]);
   const [cartError, setCartError] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     fetchCartItems();
@@ -29,6 +32,12 @@ export const Navbar = () => {
 
   const handleClick = (index) => {
     setActiveIndex(index);
+    setShowProfile(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const fetchCartItems = async () => {
@@ -64,7 +73,7 @@ export const Navbar = () => {
   // Function to start chat
   const startChat = async (sellerId, itemId) => {
     try {
-      const userId = "currentUserId"; // Replace with actual logged-in user ID
+      const userId = user?.sub || "currentUserId"; // Use Google ID if available
       const response = await axios.post(`${SERVER_URL}/api/start-chat`, { sellerId, userId, itemId });
 
       if (response.data.chatId) {
@@ -157,6 +166,44 @@ export const Navbar = () => {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+            {activeIndex === 4 && (
+              <div className="p-6 text-white">
+                {showProfile ? (
+                  <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center mb-6">
+                      {user?.picture ? (
+                        <img src={user.picture} alt="Profile" className="w-16 h-16 rounded-full mr-4" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-cyan-400 flex items-center justify-center text-black text-2xl font-bold mr-4">
+                          {user?.name?.charAt(0) || 'U'}
+                        </div>
+                      )}
+                      <div>
+                        <h2 className="text-xl font-bold">{user?.name || 'User'}</h2>
+                        <p className="text-gray-400">{user?.email || 'No email'}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full bg-red-500 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-red-600 transition-colors"
+                    >
+                      <FaSignOutAlt />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64">
+                    <div className="text-cyan-400 text-xl mb-4">Welcome, {user?.name || 'User'}!</div>
+                    <button
+                      onClick={() => setShowProfile(true)}
+                      className="bg-cyan-400 text-black px-4 py-2 rounded-lg hover:bg-cyan-300"
+                    >
+                      View Profile
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

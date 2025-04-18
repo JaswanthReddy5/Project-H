@@ -7,6 +7,7 @@ require("dotenv").config();
 
 const { auth, isAdmin } = require("./middleware/auth");
 const contentModeration = require("./middleware/contentModeration");
+const authRoutes = require('./routes/auth');
 
 const app = express();
 app.use(express.json());
@@ -25,11 +26,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Routes
+app.use('/api/auth', authRoutes);
+
 // Serve static files from the 'public' directory
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB with better error handling
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/Project-H')
   .then(() => {
     console.log("Successfully connected to MongoDB.");
   })
@@ -261,35 +265,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// User routes
-app.post("/api/register", async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    const user = new User({ username, email, password });
-    await user.save();
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.status(201).json({ user, token });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    
-    if (!user || !(await user.comparePassword(password))) {
-      throw new Error("Invalid login credentials");
-    }
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.json({ user, token });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
 // Protected routes with authentication and content moderation
 app.post("/api/chats", auth, contentModeration, async (req, res) => {
   try {
@@ -338,10 +313,22 @@ app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
 
 // Start server with better error handling
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log("Available routes:");
   console.log("- GET /api/restaurants");
   console.log("- POST /api/restaurants");
   console.log("- GET /api/test");
+  console.log("- GET /health");
+  console.log("- POST /api/auth/register");
+  console.log("- POST /api/auth/login");
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
+  } else {
+    console.error('Server error:', error);
+  }
 });
