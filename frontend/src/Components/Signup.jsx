@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import axios from '../utils/axios';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +10,7 @@ const Signup = () => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -23,14 +24,16 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/auth/register`, {
+      const response = await axios.post('/api/auth/register', {
         username: formData.username,
         password: formData.password
       });
@@ -41,7 +44,15 @@ const Signup = () => {
       }
     } catch (err) {
       console.error('Signup error:', err);
-      setError(err.response?.data?.message || 'Failed to sign up. Please try again.');
+      if (err.code === 'ERR_NETWORK') {
+        setError('Unable to connect to server. Please check your internet connection and try again.');
+      } else if (err.response) {
+        setError(err.response.data.message || 'Failed to sign up. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,6 +77,7 @@ const Signup = () => {
               placeholder="Username"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
+              disabled={isLoading}
             />
           </div>
           
@@ -78,6 +90,7 @@ const Signup = () => {
               placeholder="Password"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -90,14 +103,20 @@ const Signup = () => {
               placeholder="Confirm Password"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
+              disabled={isLoading}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-cyan-400 text-black py-2 px-4 rounded-lg hover:bg-cyan-300 transition-colors"
+            className={`w-full ${
+              isLoading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-cyan-400 hover:bg-cyan-300'
+            } text-black py-2 px-4 rounded-lg transition-colors`}
+            disabled={isLoading}
           >
-            Sign Up
+            {isLoading ? 'Signing up...' : 'Sign Up'}
           </button>
         </form>
 
@@ -106,6 +125,7 @@ const Signup = () => {
           <button
             onClick={() => navigate('/login')}
             className="text-cyan-400 hover:text-cyan-300"
+            disabled={isLoading}
           >
             Login
           </button>

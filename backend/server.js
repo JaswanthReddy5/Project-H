@@ -14,13 +14,7 @@ app.use(express.json());
 
 // Configure CORS with proper origin handling
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    // Allow all localhost origins
-    if (origin.startsWith('http://localhost:')) return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -313,8 +307,8 @@ app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
 
 // Start server with better error handling
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
   console.log("Available routes:");
   console.log("- GET /api/restaurants");
   console.log("- POST /api/restaurants");
