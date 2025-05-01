@@ -59,6 +59,8 @@ export const Navbar = () => {
     try {
       await axios.post(`${SERVER_URL}/api/add`, {
         type: selectedOption,
+        sellerId: user?.id || user?.sub,
+        sellerName: user?.username || user?.name,
         ...formData,
       });
       alert("Item added successfully!");
@@ -71,10 +73,17 @@ export const Navbar = () => {
   };
 
   // Function to start chat
-  const startChat = async (sellerId, itemId) => {
+  const startChat = async (sellerId, sellerName, itemId, productName) => {
     try {
-      const userId = user?.sub || "currentUserId"; // Use Google ID if available
-      const response = await axios.post(`${SERVER_URL}/api/start-chat`, { sellerId, userId, itemId });
+      const userId = user?.id || user?.sub;
+      const response = await axios.post(`${SERVER_URL}/api/start-chat`, { 
+        sellerId, 
+        userId, 
+        itemId,
+        productName,
+        buyerName: user?.username || user?.name,
+        sellerName
+      });
 
       if (response.data.chatId) {
         navigate(`/chat/${response.data.chatId}`);
@@ -155,55 +164,52 @@ export const Navbar = () => {
               <div className="p-6 text-white">
                 {cartItems.filter(item => item.type === "product").map((item, index) => (
                   <div key={index} className="bg-[#0a0f1e] text-white p-4 rounded-xl border border-cyan-400 shadow-md flex flex-col items-start mb-4">
-                    <p className="font-bold">{item.productName}</p>
-                    <p className="text-yellow-400">${item.price}</p>
+                    <div className="flex justify-between w-full mb-2">
+                      <p className="font-bold text-lg">{item.productName}</p>
+                      <p className="text-cyan-400">Posted by: {item.sellerName || 'Unknown Seller'}</p>
+                    </div>
+                    <p className="text-yellow-400 text-xl">${item.price}</p>
                     <p className="text-gray-400">Quantity: {item.quantity}</p>
-                    <button 
-                      onClick={() => startChat(item.sellerId, item._id)} 
-                      className="bg-cyan-400 text-black px-4 py-2 rounded mt-4"
-                    >
-                      Accept
-                    </button>
+                    {item.sellerId !== (user?.id || user?.sub) && (
+                      <button 
+                        onClick={() => startChat(item.sellerId, item.sellerName, item._id, item.productName)} 
+                        className="bg-cyan-400 text-black px-4 py-2 rounded mt-4 hover:bg-cyan-500 transition-colors w-full text-center"
+                      >
+                        Chat with Seller
+                      </button>
+                    )}
+                    {item.sellerId === (user?.id || user?.sub) && (
+                      <p className="text-gray-500 mt-4 italic">Your listing</p>
+                    )}
                   </div>
                 ))}
+                {cartItems.filter(item => item.type === "product").length === 0 && (
+                  <div className="text-center text-gray-400 mt-8">
+                    No products available
+                  </div>
+                )}
               </div>
             )}
             {activeIndex === 4 && (
               <div className="p-6 text-white">
-                {showProfile ? (
-                  <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-                    <div className="flex items-center mb-6">
-                      {user?.picture ? (
-                        <img src={user.picture} alt="Profile" className="w-16 h-16 rounded-full mr-4" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-cyan-400 flex items-center justify-center text-black text-2xl font-bold mr-4">
-                          {user?.name?.charAt(0) || 'U'}
-                        </div>
-                      )}
-                      <div>
-                        <h2 className="text-xl font-bold">{user?.name || 'User'}</h2>
-                        <p className="text-gray-400">{user?.email || 'No email'}</p>
-                      </div>
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                  <div className="flex items-center mb-6">
+                    <div className="w-16 h-16 rounded-full bg-cyan-400 flex items-center justify-center text-black text-2xl font-bold mr-4">
+                      {user?.username?.[0]?.toUpperCase() || user?.name?.[0] || 'U'}
                     </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full bg-red-500 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-red-600 transition-colors"
-                    >
-                      <FaSignOutAlt />
-                      <span>Logout</span>
-                    </button>
+                    <div>
+                      <h2 className="text-xl font-bold text-cyan-400">{user?.username || user?.name || 'User'}</h2>
+                      <p className="text-gray-400">{user?.email || 'No email'}</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-64">
-                    <div className="text-cyan-400 text-xl mb-4">Welcome, {user?.name || 'User'}!</div>
-                    <button
-                      onClick={() => setShowProfile(true)}
-                      className="bg-cyan-400 text-black px-4 py-2 rounded-lg hover:bg-cyan-300"
-                    >
-                      View Profile
-                    </button>
-                  </div>
-                )}
+                  <button
+                    onClick={handleLogout}
+                    className="w-full bg-red-500 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-red-600 transition-colors"
+                  >
+                    <FaSignOutAlt />
+                    <span>Logout</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
