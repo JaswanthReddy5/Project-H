@@ -87,6 +87,11 @@ app.post("/api/add", async (req, res) => {
     const newItem = new Item(req.body);
     await newItem.save();
     res.status(201).json(newItem);
+
+    // Emit real-time update to all clients
+    if (global.io) {
+      global.io.emit('productAdded', newItem);
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -361,6 +366,9 @@ io.on('connection', (socket) => {
     // Optionally handle disconnects
   });
 });
+
+// At the bottom, after initializing io:
+global.io = io;
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

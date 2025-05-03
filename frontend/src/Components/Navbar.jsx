@@ -4,9 +4,11 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { RestaurantList } from "./RestaurantList";
 import { useAuth } from "../context/AuthContext";
+import { io as socketIOClient } from "socket.io-client";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+const socket = socketIOClient(SERVER_URL, { autoConnect: true });
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -35,6 +37,12 @@ export const Navbar = () => {
 
   useEffect(() => {
     fetchCartItems();
+    socket.on('productAdded', (newProduct) => {
+      fetchCartItems();
+    });
+    return () => {
+      socket.off('productAdded');
+    };
   }, []);
 
   const handleClick = (index) => {
