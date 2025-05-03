@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
+import { io } from "socket.io-client";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
@@ -10,21 +11,47 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:500
 const ChatPage = () => {
   const { chatId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [chatInfo, setChatInfo] = useState(null);
-  
+  const messagesEndRef = useRef(null);
+  const socketRef = useRef(null);
+
   useEffect(() => {
-    // Fetch chat messages and info when component mounts
     fetchMessages();
     fetchChatInfo();
+
+    // Connect and join room
+    socketRef.current = io(SERVER_URL, { autoConnect: true });
+    socketRef.current.emit('joinRoom', chatId);
+
+    // Listen for incoming messages
+    socketRef.current.on('receiveMessage', (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('receiveMessage');
+        socketRef.current.disconnect();
+      }
+    };
   }, [chatId]);
+
+  useEffect(() => {
+    // Scroll to bottom on new message
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const fetchChatInfo = async () => {
     try {
       const response = await axios.get(`${SERVER_URL}/api/chat/${chatId}/info`);
       setChatInfo(response.data);
+      if (response.data.chatId) {
+        navigate(`/chat/${response.data.chatId}`);
+      }
     } catch (error) {
       console.error("Error fetching chat info:", error);
     }
@@ -43,21 +70,29 @@ const ChatPage = () => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    try {
-      await axios.post(`${SERVER_URL}/api/chat/${chatId}/messages`, {
-        content: newMessage,
-        senderId: user?.id || user?.sub,
-        senderName: user?.username || user?.name
-      });
-      setNewMessage("");
-      fetchMessages();
-    } catch (error) {
-      console.error("Error sending message:", error);
+    const messageObj = {
+      content: newMessage,
+      senderId: user?.id || user?.sub,
+      senderName: user?.username || user?.name,
+      chatId,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save to backend (for persistence)
+    await axios.post(`${SERVER_URL}/api/chat/${chatId}/messages`, messageObj);
+
+    // Emit to socket
+    if (socketRef.current) {
+      socketRef.current.emit('sendMessage', { chatId, message: messageObj });
     }
+
+    setMessages((prev) => [...prev, messageObj]);
+    setNewMessage("");
   };
 
   const handleBack = () => {
-    navigate(-1); // Go back to previous page
+    // Go to the product page (cart tab)
+    navigate("/", { state: { activeIndex: 3 } });
   };
 
   const getCurrentUserRole = () => {
@@ -112,9 +147,10 @@ const ChatPage = () => {
             </span>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-4 border-t border-cyan-400">
+      <form onSubmit={sendMessage} className="p-4 border-t-2 border-cyan-400 bg-gray-900">
         <div className="flex space-x-2">
           <input
             type="text"

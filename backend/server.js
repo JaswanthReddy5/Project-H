@@ -4,6 +4,8 @@ const cors = require("cors");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const http = require('http');
+const { Server } = require('socket.io');
 
 const { auth, isAdmin } = require("./middleware/auth");
 const contentModeration = require("./middleware/contentModeration");
@@ -104,11 +106,15 @@ app.get("/api/items", async (req, res) => {
 app.post("/api/start-chat", async (req, res) => {
   try {
     const { sellerId, userId, itemId } = req.body;
-    const chat = new Chat({
-      participants: [sellerId, userId],
-      itemId,
-    });
-    await chat.save();
+    // Check if chat already exists for these participants and item
+    let chat = await Chat.findOne({ participants: { $all: [sellerId, userId] }, itemId });
+    if (!chat) {
+      chat = new Chat({
+        participants: [sellerId, userId],
+        itemId,
+      });
+      await chat.save();
+    }
     res.json({ chatId: chat._id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -305,24 +311,58 @@ app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
   }
 });
 
-// Start server with better error handling
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log("Available routes:");
-  console.log("- GET /api/restaurants");
-  console.log("- POST /api/restaurants");
-  console.log("- GET /api/test");
-  console.log("- GET /health");
-  console.log("- POST /api/auth/register");
-  console.log("- POST /api/auth/login");
+// Add chat info endpoint for chat page context
+app.get("/api/chat/:chatId/info", async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId);
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
+    const item = await Item.findById(chat.itemId);
+    // Try to get seller and buyer info from item and chat
+    let sellerId = item?.sellerId || chat.participants[0];
+    let sellerName = item?.sellerName || undefined;
+    let buyerId = chat.participants.find(id => id !== sellerId);
+    let buyerName = undefined;
+    // If item has sellerName, use it; otherwise, fallback
+    if (!sellerName && item) sellerName = item.sellerName;
+    // Try to get buyerName from item if available (if you store it)
+    // Otherwise, leave as undefined
+    res.json({
+      chatId: chat._id,
+      sellerId,
+      sellerName,
+      buyerId,
+      buyerName,
+      productName: item?.productName || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Handle server errors
-server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use`);
-  } else {
-    console.error('Server error:', error);
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    methods: ['GET', 'POST']
   }
+});
+
+io.on('connection', (socket) => {
+  socket.on('joinRoom', (chatId) => {
+    socket.join(chatId);
+  });
+
+  socket.on('sendMessage', ({ chatId, message }) => {
+    socket.to(chatId).emit('receiveMessage', message);
+  });
+
+  socket.on('disconnect', () => {
+    // Optionally handle disconnects
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

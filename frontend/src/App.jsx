@@ -5,6 +5,7 @@ import { Navbar } from "./Components/Navbar";
 import Login from "./Components/Login";
 import Signup from "./Components/Signup";
 import { useAuth } from "./context/AuthContext";
+import ChatPage from "./pages/ChatPage";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -67,6 +68,11 @@ function App() {
                     <h1 className="text-2xl text-cyan-400">Welcome to the Dashboard</h1>
                   </div>
                 </div>
+              </ProtectedRoute>
+            } />
+            <Route path="/chat/:chatId" element={
+              <ProtectedRoute>
+                <ChatPage />
               </ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus, FaArrowLeft, FaSignOutAlt } from "react-icons/fa";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { RestaurantList } from "./RestaurantList";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,8 +10,15 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:500
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(() => {
+    // If coming from navigation with state, use that
+    if (location.state && typeof location.state.activeIndex === 'number') {
+      return location.state.activeIndex;
+    }
+    return null;
+  });
   const [showForm, setShowForm] = useState(false);
   const [selectedOption, setSelectedOption] = useState("default");
   const [formData, setFormData] = useState({
@@ -88,21 +95,23 @@ export const Navbar = () => {
   const startChat = async (sellerId, sellerName, itemId, productName) => {
     try {
       const userId = user?.id || user?.sub;
-      const response = await axios.post(`${SERVER_URL}/api/start-chat`, { 
+      const payload = { 
         sellerId, 
         userId, 
         itemId,
         productName,
         buyerName: user?.username || user?.name,
         sellerName
-      });
-
+      };
+      const response = await axios.post(`${SERVER_URL}/api/start-chat`, payload);
       if (response.data.chatId) {
         navigate(`/chat/${response.data.chatId}`);
+      } else {
+        alert('No chatId returned from server! Response: ' + JSON.stringify(response.data));
       }
     } catch (error) {
       console.error("Error starting chat:", error);
-      alert("Failed to start chat");
+      alert("Failed to start chat: " + (error.response?.data?.error || error.message));
     }
   };
 
@@ -186,7 +195,7 @@ export const Navbar = () => {
                     <p className="text-gray-400">Quantity: {item.quantity}</p>
                     {item.sellerId !== (user?.id || user?.sub) && (
                       <button 
-                        onClick={() => startChat(item.sellerId, item.sellerName, item._id, item.productName)} 
+                        onClick={() => startChat(item.sellerId || item.seller || item.ownerId, item.sellerName, item._id, item.productName)}
                         className="bg-cyan-400 text-black px-4 py-2 rounded mt-4 hover:bg-cyan-500 transition-colors w-full text-center"
                       >
                         Chat with {item.sellerName}
