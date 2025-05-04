@@ -29,7 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB with better error handling
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/Project-H')
+mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log("Successfully connected to MongoDB.");
   })
