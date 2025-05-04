@@ -7,6 +7,8 @@ import { io } from "socket.io-client";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+// Singleton socket connection
+const socket = io(SERVER_URL, { autoConnect: true });
 
 const ChatPage = () => {
   const { chatId } = useParams();
@@ -17,28 +19,24 @@ const ChatPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [chatInfo, setChatInfo] = useState(null);
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
 
   useEffect(() => {
     fetchMessages();
     fetchChatInfo();
 
-    // Connect and join room
-    socketRef.current = io(SERVER_URL, { autoConnect: true });
-    socketRef.current.emit('joinRoom', chatId);
+    // Join the chat room
+    socket.emit('joinRoom', chatId);
 
     // Listen for incoming messages
-    socketRef.current.on('receiveMessage', (message) => {
+    const handleReceiveMessage = (message) => {
       if (message.chatId === chatId) {
         setMessages((prev) => [...prev, message]);
       }
-    });
+    };
+    socket.on('receiveMessage', handleReceiveMessage);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.off('receiveMessage');
-        socketRef.current.disconnect();
-      }
+      socket.off('receiveMessage', handleReceiveMessage);
     };
   }, [chatId]);
 
@@ -84,9 +82,7 @@ const ChatPage = () => {
     await axios.post(`${SERVER_URL}/api/chat/${chatId}/messages`, messageObj);
 
     // Emit to socket
-    if (socketRef.current) {
-      socketRef.current.emit('sendMessage', { chatId, message: messageObj });
-    }
+    socket.emit('sendMessage', { chatId, message: messageObj });
 
     setMessages((prev) => [...prev, messageObj]);
     setNewMessage("");
