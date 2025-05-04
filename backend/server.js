@@ -63,6 +63,7 @@ const MessageSchema = new mongoose.Schema({
   chatId: String,
   content: String,
   senderId: String,
+  senderName: String,
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -144,6 +145,8 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
       chatId: req.params.chatId,
       content: req.body.content,
       senderId: req.body.senderId,
+      senderName: req.body.senderName,
+      createdAt: new Date(),
     });
     await message.save();
     res.status(201).json(message);

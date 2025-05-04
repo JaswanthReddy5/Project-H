@@ -29,7 +29,9 @@ const ChatPage = () => {
 
     // Listen for incoming messages
     socketRef.current.on('receiveMessage', (message) => {
-      setMessages((prev) => [...prev, message]);
+      if (message.chatId === chatId) {
+        setMessages((prev) => [...prev, message]);
+      }
     });
 
     return () => {
@@ -143,7 +145,11 @@ const ChatPage = () => {
               {message.content}
             </div>
             <span className="text-xs text-gray-500 mt-1">
-              {message.senderName || 'Unknown'}
+              {message.senderName
+                ? message.senderName
+                : message.senderId === (user?.id || user?.sub)
+                  ? 'You'
+                  : 'Unknown'}
             </span>
           </div>
         ))}
