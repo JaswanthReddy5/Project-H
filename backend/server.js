@@ -362,7 +362,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', ({ chatId, message }) => {
-    socket.to(chatId).emit('receiveMessage', message);
+    // Broadcast to all clients in the room, including the sender
+    io.in(chatId).emit('receiveMessage', message);
   });
 
   socket.on('disconnect', () => {
