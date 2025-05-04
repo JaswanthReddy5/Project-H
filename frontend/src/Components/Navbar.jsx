@@ -201,17 +201,12 @@ export const Navbar = () => {
                     </div>
                     <p className="text-yellow-400 text-xl">${item.price}</p>
                     <p className="text-gray-400">Quantity: {item.quantity}</p>
-                    {item.sellerId !== (user?.id || user?.sub) && (
-                      <button 
-                        onClick={() => startChat(item.sellerId || item.seller || item.ownerId, item.sellerName, item._id, item.productName)}
-                        className="bg-cyan-400 text-black px-4 py-2 rounded mt-4 hover:bg-cyan-500 transition-colors w-full text-center"
-                      >
-                        Chat with {item.sellerName}
-                      </button>
-                    )}
-                    {item.sellerId === (user?.id || user?.sub) && (
-                      <p className="text-gray-500 mt-4 italic">Your listing</p>
-                    )}
+                    <button 
+                      onClick={() => startChat(item.sellerId || item.seller || item.ownerId, item.sellerName, item._id, item.productName)}
+                      className="bg-cyan-400 text-black px-4 py-2 rounded mt-4 hover:bg-cyan-500 transition-colors w-full text-center"
+                    >
+                      Chat with {item.sellerName}
+                    </button>
                   </div>
                 ))}
                 {cartItems.filter(item => item.type === "product").length === 0 && (
