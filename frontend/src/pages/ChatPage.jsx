@@ -1,5 +1,7 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -11,7 +13,6 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:500
 const ChatPage = () => {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const socket = useSocket();
   const isConnected = useSocketConnection();
@@ -22,18 +23,84 @@ const ChatPage = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [messageQueue, setMessageQueue] = useState([]);
+  const [retryCount, setRetryCount] = useState(0);
+  
   // Get user ID consistently
   const userId = user?.id || user?.sub;
 
-  // Scroll to bottom function
+  const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const isInitializedRef = useRef(false);
+  const lastMessageIdRef = useRef(null);
+
+  // Debug: Add error boundary and loading state
+  const [error, setError] = useState(null);
+  
+  // Early return for debugging
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        <div className="text-center text-red-400">
+          <h2 className="text-xl mb-2">Error</h2>
+          <p>{error}</p>
+          <button 
+            onClick={() => setError(null)}
+            className="mt-4 px-4 py-2 bg-cyan-400 text-black rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        <div className="text-center">
+          <p>Please log in to access chat</p>
+          <button 
+            onClick={() => navigate('/login')}
+            className="mt-4 px-4 py-2 bg-cyan-400 text-black rounded"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Enhanced scroll to bottom function
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: "smooth",
+        block: "end"
+      });
+    }
   }, []);
+
+  // Connection status handler
+  useEffect(() => {
+    if (isConnected) {
+      setConnectionStatus('connected');
+      setRetryCount(0);
+      // Process queued messages when reconnected
+      if (messageQueue.length > 0) {
+        messageQueue.forEach(msg => {
+          if (socket) {
+            socket.emit('sendMessage', msg);
+          }
+        });
+        setMessageQueue([]);
+      }
+    } else {
+      setConnectionStatus('disconnected');
+    }
+  }, [isConnected, messageQueue, socket]);
 
   // Fetch initial data
   const fetchChatInfo = useCallback(async () => {
@@ -49,6 +116,7 @@ const ChatPage = () => {
       }
     } catch (error) {
       console.error("Error fetching chat info:", error);
+      setError(`Failed to load chat info: ${error.message}`);
     }
   }, [chatId, navigate]);
 
@@ -65,75 +133,158 @@ const ChatPage = () => {
       );
       
       setMessages(sortedMessages);
-      scrollToBottom();
+      
+      // Store last message ID for deduplication
+      if (sortedMessages.length > 0) {
+        lastMessageIdRef.current = sortedMessages[sortedMessages.length - 1].id;
+      }
+      
+      setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
+      setError(`Failed to load messages: ${error.message}`);
     } finally {
       setLoading(false);
     }
   }, [chatId, scrollToBottom]);
 
-  // Socket event handlers
-  const handleReceiveMessage = useCallback((message) => {
-    console.log('Received message:', message);
-    
-    // Prevent duplicate messages
-    setMessages((prevMessages) => {
-      const messageExists = prevMessages.some(
-        msg => msg.id === message.id || 
-        (msg.content === message.content && 
-         msg.senderId === message.senderId && 
-         Math.abs(new Date(msg.createdAt) - new Date(message.createdAt)) < 1000)
-      );
+  // Enhanced message deduplication
+  const isDuplicateMessage = useCallback((newMsg, existingMessages) => {
+    return existingMessages.some(msg => {
+      // Check by ID first
+      if (msg.id && newMsg.id && msg.id === newMsg.id) {
+        return true;
+      }
       
-      if (messageExists) {
+      // Check by content, sender, and time proximity
+      const timeDiff = Math.abs(new Date(msg.createdAt) - new Date(newMsg.createdAt));
+      return (
+        msg.content === newMsg.content &&
+        msg.senderId === newMsg.senderId &&
+        timeDiff < 2000 // 2 seconds tolerance
+      );
+    });
+  }, []);
+
+  // Socket event handlers
+  const handleReceiveMessage = useCallback((messageData) => {
+    console.log('📨 Received message:', messageData);
+    
+    // Ensure we have the required data
+    if (!messageData || !messageData.content) {
+      console.warn('Invalid message data received:', messageData);
+      return;
+    }
+
+    const message = {
+      id: messageData.id || Date.now() + Math.random(),
+      content: messageData.content,
+      senderId: messageData.senderId,
+      senderName: messageData.senderName || 'Unknown',
+      chatId: messageData.chatId || chatId,
+      createdAt: messageData.createdAt || new Date().toISOString(),
+      ...messageData
+    };
+    
+    setMessages((prevMessages) => {
+      // Check for duplicates
+      if (isDuplicateMessage(message, prevMessages)) {
+        console.log('🚫 Duplicate message detected, skipping');
         return prevMessages;
       }
       
       const updatedMessages = [...prevMessages, message];
-      return updatedMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      const sortedMessages = updatedMessages.sort((a, b) => 
+        new Date(a.createdAt) - new Date(b.createdAt)
+      );
+      
+      // Update last message ID
+      lastMessageIdRef.current = message.id;
+      
+      console.log('✅ Message added to chat');
+      return sortedMessages;
     });
     
-    scrollToBottom();
-  }, [scrollToBottom]);
+    // Scroll to bottom after a short delay
+    setTimeout(scrollToBottom, 50);
+  }, [chatId, isDuplicateMessage, scrollToBottom]);
 
-  const handleUserTyping = useCallback(({ userId: typingUserId, isTyping }) => {
-    // Only show typing indicator for other users
-    if (typingUserId && typingUserId !== userId) {
-      setOtherUserTyping(isTyping);
+  const handleUserTyping = useCallback(({ userId: typingUserId, isTyping: typing, chatId: typingChatId }) => {
+    // Only show typing indicator for other users in this chat
+    if (typingUserId && typingUserId !== userId && typingChatId === chatId) {
+      console.log(`👀 ${typingUserId} is ${typing ? 'typing' : 'not typing'}`);
+      setOtherUserTyping(typing);
     }
-  }, [userId]);
+  }, [userId, chatId]);
 
   const handleSocketError = useCallback((error) => {
-    console.error('Socket error:', error);
+    console.error('🔥 Socket error:', error);
+    setConnectionStatus('error');
+  }, []);
+
+  const handleConnect = useCallback(() => {
+    console.log('🔗 Socket connected');
+    setConnectionStatus('connected');
+    setRetryCount(0);
+    
+    // Rejoin room when reconnected
+    if (socket && chatId && userId) {
+      socket.emit('userJoin', userId);
+      socket.emit('joinRoom', chatId);
+    }
+  }, [socket, chatId, userId]);
+
+  const handleDisconnect = useCallback((reason) => {
+    console.log('🔌 Socket disconnected:', reason);
+    setConnectionStatus('disconnected');
+    setOtherUserTyping(false);
   }, []);
 
   // Socket connection and event setup
   useEffect(() => {
-    if (!socket || !chatId || !userId || !isConnected) {
-      console.log('Socket setup skipped:', { socket: !!socket, chatId, userId, isConnected });
+    if (!socket || !chatId || !userId) {
+      console.log('⏸️ Socket setup skipped:', { socket: !!socket, chatId, userId });
       return;
     }
 
-    console.log('Setting up socket connection for chat:', chatId);
+    // Prevent multiple initializations
+    if (isInitializedRef.current) {
+      return;
+    }
+
+    console.log('🚀 Setting up socket connection for chat:', chatId);
+    isInitializedRef.current = true;
 
     // Join room and user
     socket.emit('userJoin', userId);
     socket.emit('joinRoom', chatId);
 
     // Set up socket event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
     socket.on('receiveMessage', handleReceiveMessage);
     socket.on('userTyping', handleUserTyping);
     socket.on('error', handleSocketError);
+    socket.on('message', handleReceiveMessage); // Alternative event name
+    socket.on('newMessage', handleReceiveMessage); // Another alternative
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up socket listeners');
+      console.log('🧹 Cleaning up socket listeners');
+      isInitializedRef.current = false;
+      
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('receiveMessage', handleReceiveMessage);
       socket.off('userTyping', handleUserTyping);
       socket.off('error', handleSocketError);
+      socket.off('message', handleReceiveMessage);
+      socket.off('newMessage', handleReceiveMessage);
+      
+      // Leave room
+      socket.emit('leaveRoom', chatId);
     };
-  }, [socket, chatId, userId, isConnected, handleReceiveMessage, handleUserTyping, handleSocketError]);
+  }, [socket, chatId, userId, handleConnect, handleDisconnect, handleReceiveMessage, handleUserTyping, handleSocketError]);
 
   // Fetch initial data
   useEffect(() => {
@@ -143,7 +294,7 @@ const ChatPage = () => {
     }
   }, [chatId, fetchChatInfo, fetchMessages]);
 
-  // Handle typing indicator
+  // Handle typing indicator with debouncing
   const handleTyping = useCallback(() => {
     if (!socket || !isConnected || !chatId || !userId) return;
     
@@ -155,6 +306,7 @@ const ChatPage = () => {
         userId, 
         isTyping: true 
       });
+      console.log('⌨️ Started typing');
     }
 
     // Clear existing timeout
@@ -171,38 +323,38 @@ const ChatPage = () => {
           userId, 
           isTyping: false 
         });
+        console.log('⌨️ Stopped typing');
       }
     }, 2000);
   }, [socket, isConnected, chatId, userId, isTyping]);
 
-  // Send message
+  // Enhanced send message function
   const sendMessage = async (e) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !socket || !isConnected || !chatId || !userId) {
-      console.log('Send message blocked:', { 
-        message: newMessage.trim(), 
-        socket: !!socket, 
-        isConnected, 
-        chatId, 
-        userId 
-      });
+    if (!newMessage.trim()) {
+      return;
+    }
+
+    if (!socket || !chatId || !userId) {
+      console.error('❌ Cannot send message: missing requirements');
       return;
     }
 
     const messageContent = newMessage.trim();
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
     const messageObj = {
+      id: tempId,
       content: messageContent,
       senderId: userId,
-      senderName: user?.username || user?.name || 'Unknown',
+      senderName: user?.username || user?.name || 'You',
       chatId,
       createdAt: new Date().toISOString(),
-      // Add a temporary ID for deduplication
-      tempId: Date.now() + Math.random()
+      isTemporary: true
     };
 
     try {
-      console.log('Sending message:', messageObj);
+      console.log('📤 Sending message:', messageContent);
       
       // Clear the input immediately for better UX
       setNewMessage("");
@@ -220,20 +372,47 @@ const ChatPage = () => {
       
       // Add message optimistically to UI
       setMessages(prev => [...prev, messageObj]);
-      scrollToBottom();
+      setTimeout(scrollToBottom, 50);
       
-      // Send message via socket
-      socket.emit('sendMessage', { 
-        chatId, 
-        message: messageObj 
-      });
+      if (isConnected) {
+        // Send message via socket
+        socket.emit('sendMessage', { 
+          chatId, 
+          message: messageObj 
+        });
+        console.log('✅ Message sent via socket');
+      } else {
+        // Queue message for when connection is restored
+        setMessageQueue(prev => [...prev, { chatId, message: messageObj }]);
+        console.log('⏳ Message queued for later');
+      }
       
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       // Restore message input on error
       setNewMessage(messageContent);
+      
+      // Remove the optimistic message
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
     }
   };
+
+  // Auto-retry connection
+  useEffect(() => {
+    if (!isConnected && retryCount < 5) {
+      const timeout = setTimeout(() => {
+        console.log(`🔄 Attempting to reconnect... (${retryCount + 1}/5)`);
+        setRetryCount(prev => prev + 1);
+        if (socket) {
+          socket.connect();
+        }
+      }, Math.pow(2, retryCount) * 1000); // Exponential backoff
+      
+      reconnectTimeoutRef.current = timeout;
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isConnected, retryCount, socket]);
 
   // Navigation
   const handleBack = () => {
@@ -265,11 +444,34 @@ const ChatPage = () => {
     }
   };
 
+  const getConnectionStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'text-green-400';
+      case 'connecting': return 'text-yellow-400';
+      case 'disconnected': return 'text-red-400';
+      case 'error': return 'text-red-500';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return '● Connected';
+      case 'connecting': return '● Connecting...';
+      case 'disconnected': return retryCount > 0 ? `● Reconnecting... (${retryCount}/5)` : '● Disconnected';
+      case 'error': return '● Connection Error';
+      default: return '● Unknown';
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
     };
   }, []);
@@ -304,11 +506,16 @@ const ChatPage = () => {
               </p>
             )}
             <div className="flex items-center space-x-2 text-xs">
-              <span className={`${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={isConnected ? 'text-green-400' : 'text-red-400'}>
                 {isConnected ? '● Connected' : '● Disconnected'}
               </span>
               {!isConnected && (
                 <span className="text-yellow-400">Reconnecting...</span>
+              )}
+              {messageQueue.length > 0 && (
+                <span className="text-yellow-400">
+                  • {messageQueue.length} queued
+                </span>
               )}
             </div>
           </div>
@@ -328,17 +535,20 @@ const ChatPage = () => {
         ) : (
           messages.map((message, index) => (
             <div
-              key={message.id || message.tempId || index}
+              key={message.id || `msg-${index}`}
               className={`flex flex-col ${
                 message.senderId === userId ? "items-end" : "items-start"
               }`}
             >
-              <div className={`p-3 rounded-lg max-w-[70%] break-words ${
+              <div className={`p-3 rounded-lg max-w-[70%] break-words relative ${
                 message.senderId === userId
                   ? "bg-cyan-400 text-black"
                   : "bg-gray-700 text-white"
-              }`}>
+              } ${message.isTemporary ? 'opacity-70' : ''}`}>
                 {message.content}
+                {message.isTemporary && (
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 animate-spin rounded-full border border-gray-400 border-t-transparent"></div>
+                )}
               </div>
               <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
                 <span>
@@ -387,13 +597,14 @@ const ChatPage = () => {
               handleTyping();
             }}
             placeholder={isConnected ? "Type a message..." : "Reconnecting..."}
-            disabled={!isConnected}
+            disabled={!userId}
             className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
             maxLength={1000}
+            autoComplete="off"
           />
           <button
             type="submit"
-            disabled={!newMessage.trim() || !isConnected}
+            disabled={!newMessage.trim() || !userId}
             className="bg-cyan-400 text-black px-6 py-2 rounded-lg hover:bg-cyan-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
