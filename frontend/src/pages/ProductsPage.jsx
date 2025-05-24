@@ -3,15 +3,22 @@ import { useCart } from '../hooks/useCart';
 import { useAuth } from '../context/AuthContext';
 import { ProductItemCard } from '../Components/items/ProductItemCard';
 import { itemsAPI } from '../services/api';
+import { useSocket } from '../contexts/SocketContext';
 
 export const ProductsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cartItems, cartError, loading, fetchCartItems } = useCart();
+  const socket = useSocket();
 
   const startChat = async (sellerId, sellerName, itemId, productName) => {
     try {
       const userId = user?.id || user?.sub;
+      if (!userId) {
+        alert('Please login to start a chat');
+        return;
+      }
+
       const payload = { 
         sellerId, 
         userId, 
@@ -21,12 +28,23 @@ export const ProductsPage = () => {
         sellerName
       };
       
+      console.log('Starting chat with payload:', payload);
       const response = await itemsAPI.startChat(payload);
       
       if (response.chatId) {
+        // Ensure socket is connected before navigating
+        if (!socket.connected) {
+          socket.connect();
+        }
+        
+        // Join the chat room before navigating
+        socket.emit('joinRoom', response.chatId);
+        socket.emit('userJoin', userId);
+        
         navigate(`/chat/${response.chatId}`);
       } else {
-        alert('No chatId returned from server! Response: ' + JSON.stringify(response));
+        console.error('No chatId in response:', response);
+        alert('Failed to start chat: No chat ID received');
       }
     } catch (error) {
       console.error("Error starting chat:", error);

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { socket } from "../services/socket";
+import { useSocket, useSocketConnection } from "../contexts/SocketContext";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
@@ -13,51 +13,44 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const socket = useSocket();
+  const isConnected = useSocketConnection();
+  
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [chatInfo, setChatInfo] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
+    if (!socket || !chatId || !user) return;
+
+    const userId = user?.id || user?.sub;
+    
     // Join room and set up socket listeners
-    socket.emit('userJoin', user?.id || user?.sub);
+    socket.emit('userJoin', userId);
     socket.emit('joinRoom', chatId);
 
     const handleReceiveMessage = (message) => {
+      console.log('Received message:', message);
       setMessages((prev) => [...prev, message]);
       // Scroll to bottom when new message arrives
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const handleUserTyping = ({ userId, isTyping }) => {
-      if (userId !== (user?.id || user?.sub)) {
+    const handleUserTyping = ({ userId: typingUserId, isTyping }) => {
+      if (typingUserId !== userId) {
         setOtherUserTyping(isTyping);
       }
     };
 
-    const handleConnect = () => {
-      setConnectionStatus('connected');
-      // Re-join room after reconnection
-      socket.emit('userJoin', user?.id || user?.sub);
-      socket.emit('joinRoom', chatId);
-    };
-
-    const handleDisconnect = () => {
-      setConnectionStatus('disconnected');
-    };
-
     const handleError = (error) => {
       console.error('Socket error:', error);
-      setConnectionStatus('error');
     };
 
     // Set up socket event listeners
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
     socket.on('receiveMessage', handleReceiveMessage);
     socket.on('userTyping', handleUserTyping);
     socket.on('error', handleError);
@@ -68,18 +61,22 @@ const ChatPage = () => {
 
     return () => {
       // Clean up socket listeners
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
       socket.off('receiveMessage', handleReceiveMessage);
       socket.off('userTyping', handleUserTyping);
       socket.off('error', handleError);
     };
-  }, [chatId, user]);
+  }, [socket, chatId, user]);
 
   const handleTyping = () => {
+    if (!socket || !isConnected) return;
+    
     if (!isTyping) {
       setIsTyping(true);
-      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: true });
+      socket.emit('typing', { 
+        chatId, 
+        userId: user?.id || user?.sub, 
+        isTyping: true 
+      });
     }
 
     // Clear existing timeout
@@ -90,13 +87,17 @@ const ChatPage = () => {
     // Set new timeout
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: false });
+      socket.emit('typing', { 
+        chatId, 
+        userId: user?.id || user?.sub, 
+        isTyping: false 
+      });
     }, 2000);
   };
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || connectionStatus !== 'connected') return;
+    if (!newMessage.trim() || !socket || !isConnected) return;
 
     const messageObj = {
       content: newMessage,
@@ -107,12 +108,17 @@ const ChatPage = () => {
     };
 
     try {
+      console.log('Sending message:', messageObj);
       // Emit to socket first for instant delivery
       socket.emit('sendMessage', { chatId, message: messageObj });
       
       // Clear typing status
       setIsTyping(false);
-      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: false });
+      socket.emit('typing', { 
+        chatId, 
+        userId: user?.id || user?.sub, 
+        isTyping: false 
+      });
       
       setNewMessage("");
     } catch (error) {
@@ -174,14 +180,8 @@ const ChatPage = () => {
                 {chatInfo.productName && `About: ${chatInfo.productName}`}
               </p>
             )}
-            <p className={`text-xs ${
-              connectionStatus === 'connected' ? 'text-green-400' : 
-              connectionStatus === 'connecting' ? 'text-yellow-400' : 
-              'text-red-400'
-            }`}>
-              {connectionStatus === 'connected' ? 'Connected' :
-               connectionStatus === 'connecting' ? 'Connecting...' :
-               'Disconnected - Trying to reconnect...'}
+            <p className={`text-xs ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {isConnected ? 'Connected' : 'Disconnected - Trying to reconnect...'}
             </p>
           </div>
         </div>
