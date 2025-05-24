@@ -64,9 +64,6 @@ function App() {
               <ProtectedRoute>
                 <div className="flex flex-col h-screen">
                   <Navbar />
-                  <div className="flex-1 flex items-center justify-center">
-                    <h1 className="text-2xl text-cyan-400">Welcome to the Dashboard</h1>
-                  </div>
                 </div>
               </ProtectedRoute>
             } />
