@@ -1,5 +1,4 @@
-
-import { RestaurantList } from '../components/RestaurantList';
+import { RestaurantList } from "../Components/RestaurantList";
 
 export const RestaurantsPage = () => {
   return (

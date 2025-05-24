@@ -351,23 +351,80 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
-    methods: ['GET', 'POST']
-  }
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.35.239:5173', 'http://192.168.35.239:5174'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling']
 });
 
+// Store active users and their socket IDs
+const activeUsers = new Map();
+
 io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Handle user joining
+  socket.on('userJoin', (userId) => {
+    if (userId) {
+      activeUsers.set(userId, socket.id);
+      console.log(`User ${userId} joined with socket ${socket.id}`);
+    }
+  });
+
+  // Handle joining chat room
   socket.on('joinRoom', (chatId) => {
-    socket.join(chatId);
+    if (chatId) {
+      socket.join(chatId);
+      console.log(`Socket ${socket.id} joined room ${chatId}`);
+    }
   });
 
-  socket.on('sendMessage', ({ chatId, message }) => {
-    // Broadcast to all clients in the room, including the sender
-    io.in(chatId).emit('receiveMessage', message);
+  // Handle sending messages
+  socket.on('sendMessage', async ({ chatId, message }) => {
+    try {
+      if (!chatId || !message) {
+        throw new Error('Invalid message data');
+      }
+
+      // Save message to database
+      const savedMessage = new Message({
+        chatId,
+        content: message.content,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        createdAt: new Date()
+      });
+      await savedMessage.save();
+
+      // Broadcast to all clients in the room
+      io.in(chatId).emit('receiveMessage', savedMessage);
+    } catch (error) {
+      console.error('Error saving/broadcasting message:', error);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
   });
 
+  // Handle typing status
+  socket.on('typing', ({ chatId, userId, isTyping }) => {
+    if (chatId && userId) {
+      socket.to(chatId).emit('userTyping', { userId, isTyping });
+    }
+  });
+
+  // Handle disconnection
   socket.on('disconnect', () => {
-    // Optionally handle disconnects
+    console.log('User disconnected:', socket.id);
+    // Remove user from active users
+    for (const [userId, socketId] of activeUsers.entries()) {
+      if (socketId === socket.id) {
+        activeUsers.delete(userId);
+        break;
+      }
+    }
   });
 });
 

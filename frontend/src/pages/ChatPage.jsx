@@ -3,12 +3,10 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { io } from "socket.io-client";
+import { socket } from "../services/socket";
 
 // Get the server URL from environment or use a fallback
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
-// Singleton socket connection
-const socket = io(SERVER_URL, { autoConnect: true });
 
 const ChatPage = () => {
   const { chatId } = useParams();
@@ -18,32 +16,109 @@ const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [chatInfo, setChatInfo] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
+    // Join room and set up socket listeners
+    socket.emit('userJoin', user?.id || user?.sub);
+    socket.emit('joinRoom', chatId);
+
+    const handleReceiveMessage = (message) => {
+      setMessages((prev) => [...prev, message]);
+      // Scroll to bottom when new message arrives
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleUserTyping = ({ userId, isTyping }) => {
+      if (userId !== (user?.id || user?.sub)) {
+        setOtherUserTyping(isTyping);
+      }
+    };
+
+    const handleConnect = () => {
+      setConnectionStatus('connected');
+      // Re-join room after reconnection
+      socket.emit('userJoin', user?.id || user?.sub);
+      socket.emit('joinRoom', chatId);
+    };
+
+    const handleDisconnect = () => {
+      setConnectionStatus('disconnected');
+    };
+
+    const handleError = (error) => {
+      console.error('Socket error:', error);
+      setConnectionStatus('error');
+    };
+
+    // Set up socket event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('userTyping', handleUserTyping);
+    socket.on('error', handleError);
+
+    // Fetch initial messages and chat info
     fetchMessages();
     fetchChatInfo();
 
-    // Join the chat room
-    socket.emit('joinRoom', chatId);
-
-    // Listen for incoming messages
-    const handleReceiveMessage = (message) => {
-      if (message.chatId === chatId) {
-        setMessages((prev) => [...prev, message]);
-      }
-    };
-    socket.on('receiveMessage', handleReceiveMessage);
-
     return () => {
+      // Clean up socket listeners
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('userTyping', handleUserTyping);
+      socket.off('error', handleError);
     };
-  }, [chatId]);
+  }, [chatId, user]);
 
-  useEffect(() => {
-    // Scroll to bottom on new message
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const handleTyping = () => {
+    if (!isTyping) {
+      setIsTyping(true);
+      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: true });
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set new timeout
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: false });
+    }, 2000);
+  };
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || connectionStatus !== 'connected') return;
+
+    const messageObj = {
+      content: newMessage,
+      senderId: user?.id || user?.sub,
+      senderName: user?.username || user?.name,
+      chatId,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      // Emit to socket first for instant delivery
+      socket.emit('sendMessage', { chatId, message: messageObj });
+      
+      // Clear typing status
+      setIsTyping(false);
+      socket.emit('typing', { chatId, userId: user?.id || user?.sub, isTyping: false });
+      
+      setNewMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
 
   const fetchChatInfo = async () => {
     try {
@@ -64,28 +139,6 @@ const ChatPage = () => {
     } catch (error) {
       console.error("Error fetching messages:", error);
     }
-  };
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const messageObj = {
-      content: newMessage,
-      senderId: user?.id || user?.sub,
-      senderName: user?.username || user?.name,
-      chatId,
-      createdAt: new Date().toISOString()
-    };
-
-    // Save to backend (for persistence)
-    await axios.post(`${SERVER_URL}/api/chat/${chatId}/messages`, messageObj);
-
-    // Emit to socket
-    socket.emit('sendMessage', { chatId, message: messageObj });
-
-    setMessages((prev) => [...prev, messageObj]);
-    setNewMessage("");
   };
 
   const handleBack = () => {
@@ -121,6 +174,15 @@ const ChatPage = () => {
                 {chatInfo.productName && `About: ${chatInfo.productName}`}
               </p>
             )}
+            <p className={`text-xs ${
+              connectionStatus === 'connected' ? 'text-green-400' : 
+              connectionStatus === 'connecting' ? 'text-yellow-400' : 
+              'text-red-400'
+            }`}>
+              {connectionStatus === 'connected' ? 'Connected' :
+               connectionStatus === 'connecting' ? 'Connecting...' :
+               'Disconnected - Trying to reconnect...'}
+            </p>
           </div>
         </div>
       </div>
@@ -149,15 +211,23 @@ const ChatPage = () => {
             </span>
           </div>
         ))}
+        {otherUserTyping && (
+          <div className="text-sm text-gray-400 italic">
+            {getOtherUserName()} is typing...
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-4 border-t-2 border-cyan-400 bg-gray-900">
+      <form onSubmit={sendMessage} className="p-4 border-t border-cyan-400">
         <div className="flex space-x-2">
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
             placeholder="Type a message..."
             className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
           />
