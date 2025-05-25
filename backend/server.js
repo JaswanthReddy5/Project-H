@@ -14,9 +14,16 @@ const authRoutes = require('./routes/auth');
 const app = express();
 app.use(express.json());
 
-// Configure CORS with proper origin handling
+// Configure CORS with proper origin handling - Updated to include your IP
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:5174',
+    'http://192.168.239.96:5173',
+    'http://192.168.239.96:5174',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -303,6 +310,7 @@ app.post("/api/messages", auth, contentModeration, async (req, res) => {
 // Admin routes
 app.get("/api/admin/users", auth, isAdmin, async (req, res) => {
   try {
+    const User = require('./models/User'); // Import User model
     const users = await User.find({}, '-password');
     res.json(users);
   } catch (error) {
@@ -351,7 +359,16 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.35.239:5173', 'http://192.168.35.239:5174'],
+    origin: [
+      'http://localhost:5173', 
+      'http://localhost:5174', 
+      'http://192.168.35.239:5173', 
+      'http://192.168.35.239:5174',
+      'http://192.168.239.96:5173',
+      'http://192.168.239.96:5174',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174'
+    ],
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -432,6 +449,10 @@ io.on('connection', (socket) => {
 global.io = io;
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Server accessible at:`);
+  console.log(`- http://localhost:${PORT}`);
+  console.log(`- http://127.0.0.1:${PORT}`);
+  console.log(`- http://192.168.239.96:${PORT}`);
 });
