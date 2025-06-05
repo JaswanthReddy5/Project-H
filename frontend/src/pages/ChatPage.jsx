@@ -31,10 +31,10 @@ const ChatPage = () => {
   const { chatId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
   
   // Safe check for socket connection
-  const isConnected = socket && typeof socket.connected === 'boolean' ? socket.connected : false;
+  const isConnected = connected;
   
   // State management
   const [messages, setMessages] = useState([]);
@@ -49,7 +49,8 @@ const ChatPage = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState(null);
   const [lastSeen, setLastSeen] = useState(null);
-  
+  const [socketReady, setSocketReady] = useState(false);
+
   // Get user ID consistently
   const userId = user?.id || user?.sub;
 
@@ -61,6 +62,8 @@ const ChatPage = () => {
   const lastMessageIdRef = useRef(null);
   const messageInputRef = useRef(null);
   const containerRef = useRef(null);
+  const currentChatIdRef = useRef(null);
+  const socketInitializedRef = useRef(false);
 
   // Safe socket emit function
   const safeSocketEmit = useCallback((event, data) => {
@@ -195,6 +198,7 @@ const ChatPage = () => {
       // If the response contains a different chatId, navigate to it
       if (response.data.chatId && response.data.chatId !== chatId) {
         navigate(`/chat/${response.data.chatId}`, { replace: true });
+        return;
       }
     } catch (error) {
       console.error("❌ Error fetching chat info:", error);
@@ -240,106 +244,138 @@ const ChatPage = () => {
     }
   }, [chatId, scrollToBottom, userId, user?.token]);
 
-  // Enhanced message deduplication
-  const isDuplicateMessage = useCallback((newMsg, existingMessages) => {
-    return existingMessages.some(msg => {
-      // Check by ID first (most reliable)
-      if (msg.id && newMsg.id && msg.id === newMsg.id) {
-        return true;
-      }
-      
-      // Check by content, sender, and time proximity for temporary IDs
-      const timeDiff = Math.abs(new Date(msg.createdAt) - new Date(newMsg.createdAt));
-      return (
-        msg.content === newMsg.content &&
-        msg.senderId === newMsg.senderId &&
-        timeDiff < 3000 // 3 seconds tolerance
-      );
-    });
-  }, []);
+  // Initialize socket connection for chat
+  const initializeSocket = useCallback(() => {
+    if (!socket || !chatId || !userId || !isConnected || socketInitializedRef.current) {
+      return;
+    }
 
-  // Enhanced message receiving handler
-  const handleReceiveMessage = useCallback((messageData) => {
-    console.log('📨 Received message:', messageData);
+    console.log('Initializing socket for chat:', chatId, 'User:', userId);
     
-    // Validate message data
-    if (!messageData || !messageData.content || !messageData.senderId) {
-      console.warn('⚠️ Invalid message data received:', messageData);
+    // Store current chat ID
+    currentChatIdRef.current = chatId;
+    socketInitializedRef.current = true;
+
+    // Leave any previous rooms first
+    socket.emit('leaveAllRooms');
+    
+    // Join as user and join the specific chat room
+    socket.emit('userJoin', {
+      userId: userId,
+      username: user?.username || user?.name || 'Unknown User'
+    });
+    
+    // Join the chat room
+    socket.emit('joinRoom', {
+      chatId: chatId,
+      userId: userId
+    });
+
+    setSocketReady(true);
+    console.log('Socket initialized for chat:', chatId);
+  }, [socket, chatId, userId, isConnected, user]);
+
+  // Socket event handlers - FIXED VERSION
+  const handleReceiveMessage = useCallback((data) => {
+    console.log('📩 Received message:', data);
+    
+    const message = data.message || data;
+    
+    // Only process messages for the current chat
+    if (message.chatId && message.chatId !== currentChatIdRef.current) {
+      console.log('Ignoring message for different chat:', message.chatId);
       return;
     }
-
-    // Skip messages from the same user (to prevent echo)
-    if (messageData.senderId === userId) {
-      console.log('🔄 Skipping own message echo');
-      return;
-    }
-
-    const message = {
-      id: messageData.id || `recv_${Date.now()}_${Math.random()}`,
-      content: messageData.content,
-      senderId: messageData.senderId,
-      senderName: messageData.senderName || 'Unknown',
-      chatId: messageData.chatId || chatId,
-      createdAt: messageData.createdAt || new Date().toISOString(),
-      status: MESSAGE_STATUS.DELIVERED,
-      ...messageData
-    };
     
     setMessages((prevMessages) => {
-      // Check for duplicates
-      if (isDuplicateMessage(message, prevMessages)) {
-        console.log('🚫 Duplicate message detected, skipping');
-        return prevMessages;
+      // If this message has a tempId and matches an existing message, replace it
+      if (message.tempId) {
+        const existingIndex = prevMessages.findIndex(msg => msg.tempId === message.tempId);
+        if (existingIndex !== -1) {
+          console.log('Replacing temporary message with server message');
+          const updatedMessages = [...prevMessages];
+          updatedMessages[existingIndex] = { ...message, tempId: undefined };
+          return updatedMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        }
       }
       
-      const updatedMessages = [...prevMessages, message];
-      const sortedMessages = updatedMessages.sort((a, b) => 
+      // For messages from the current user, check if we can replace a temp message
+      if (message.senderId === userId) {
+        // Check if this server message can replace a temporary message
+        const tempMsgIndex = prevMessages.findIndex(msg => 
+          msg.tempId && 
+          msg.content === message.content && 
+          msg.senderId === message.senderId &&
+          Math.abs(new Date(msg.createdAt) - new Date(message.createdAt)) < 10000 // 10 second window
+        );
+        
+        if (tempMsgIndex !== -1) {
+          console.log('Replacing temp message with server message for current user');
+          const updatedMessages = [...prevMessages];
+          updatedMessages[tempMsgIndex] = { ...message, tempId: undefined };
+          return updatedMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        }
+        
+        // Check for exact duplicate (content, sender, and recent timestamp)
+        const isDuplicate = prevMessages.some(existingMsg => 
+          existingMsg.content === message.content && 
+          existingMsg.senderId === message.senderId && 
+          !existingMsg.tempId && // Don't consider temp messages as duplicates for replacement
+          Math.abs(new Date(existingMsg.createdAt) - new Date(message.createdAt)) < 5000
+        );
+        
+        if (isDuplicate) {
+          console.log('Duplicate message from current user ignored');
+          return prevMessages;
+        }
+      } else {
+        // For messages from other users, use the original logic
+        const isDuplicate = prevMessages.some(existingMsg => {
+          // Exact ID match
+          if (existingMsg.id && message.id && existingMsg.id === message.id) {
+            return true;
+          }
+          
+          // Content and sender match within a reasonable time window
+          if (existingMsg.content === message.content && 
+              existingMsg.senderId === message.senderId && 
+              Math.abs(new Date(existingMsg.createdAt) - new Date(message.createdAt)) < 5000) {
+            return true;
+          }
+          
+          return false;
+        });
+        
+        if (isDuplicate) {
+          console.log('Duplicate message from other user ignored');
+          return prevMessages;
+        }
+      }
+      
+      const newMessages = [...prevMessages, message].sort((a, b) => 
         new Date(a.createdAt) - new Date(b.createdAt)
       );
       
-      // Update last message ID
-      lastMessageIdRef.current = message.id;
-      
-      console.log('✅ New message added to chat');
-      return sortedMessages;
+      console.log('✅ Message added to chat. Total messages:', newMessages.length);
+      return newMessages;
     });
     
-    // Scroll to bottom and play notification sound
-    setTimeout(() => {
-      scrollToBottom();
-      // You can add notification sound here
-      // new Audio('/notification.mp3').play().catch(() => {});
-    }, 50);
-  }, [chatId, isDuplicateMessage, scrollToBottom, userId]);
+    scrollToBottom();
+  }, [scrollToBottom, userId]);
 
-  // Handle typing indicator
-  const handleUserTyping = useCallback(({ userId: typingUserId, isTyping: typing, chatId: typingChatId, userName }) => {
-    // Only show typing indicator for other users in this chat
-    if (typingUserId && typingUserId !== userId && typingChatId === chatId) {
-      console.log(`👀 ${userName || typingUserId} is ${typing ? 'typing' : 'not typing'}`);
-      setOtherUserTyping(typing);
-      
-      // Auto-hide typing indicator after 5 seconds
-      if (typing) {
-        setTimeout(() => setOtherUserTyping(false), 5000);
-      }
-    }
-  }, [userId, chatId]);
-
-  // Handle user online status
-  const handleUserOnlineStatus = useCallback(({ userId: statusUserId, isOnline, lastSeen: userLastSeen }) => {
-    if (statusUserId && statusUserId !== userId) {
-      setOtherUserOnline(isOnline);
-      if (userLastSeen) {
-        setLastSeen(userLastSeen);
-      }
+  const handleUserTyping = useCallback((data) => {
+    console.log('👀 Typing event received:', data);
+    
+    // Only show typing for other users in current chat
+    if (data.userId !== userId && data.chatId === currentChatIdRef.current) {
+      setOtherUserTyping(data.isTyping);
+      console.log('Other user typing status:', data.isTyping);
     }
   }, [userId]);
 
   // Socket error handler
   const handleSocketError = useCallback((error) => {
-    console.error('🔥 Socket error:', error);
-    setConnectionStatus(CONNECTION_STATUS.ERROR);
+    console.error('❌ Socket error:', error);
   }, []);
 
   // Socket connect handler
@@ -364,71 +400,56 @@ const ChatPage = () => {
     setOtherUserOnline(false);
   }, []);
 
-  // Socket connection and event setup
+  const handleRoomJoined = useCallback((data) => {
+    console.log('✅ Successfully joined room:', data);
+  }, []);
+
+  const handleUserJoined = useCallback((data) => {
+    console.log('👋 User joined chat:', data);
+  }, []);
+
+  // Main socket effect
   useEffect(() => {
-    if (!socket || !chatId || !userId) {
-      console.log('⏸️ Socket setup skipped:', { socket: !!socket, chatId, userId });
+    if (!socket || !isConnected) {
+      setSocketReady(false);
+      socketInitializedRef.current = false;
       return;
     }
 
-    // Prevent multiple initializations
-    if (isInitializedRef.current) {
-      return;
+    // Reset socket state when chat changes
+    if (currentChatIdRef.current !== chatId) {
+      socketInitializedRef.current = false;
+      setSocketReady(false);
     }
-
-    console.log('🚀 Setting up socket connection for chat:', chatId);
-    isInitializedRef.current = true;
-
-    // Join room and register user
-    safeSocketEmit('userJoin', { 
-      userId, 
-      userName: user?.username || user?.name || 'User',
-      chatId 
-    });
-    safeSocketEmit('joinRoom', { 
-      roomId: chatId, 
-      userId 
-    });
 
     // Set up socket event listeners
-    safeSocketOn('connect', handleConnect);
-    safeSocketOn('disconnect', handleDisconnect);
-    safeSocketOn('receiveMessage', handleReceiveMessage);
-    safeSocketOn('newMessage', handleReceiveMessage);
-    safeSocketOn('message', handleReceiveMessage);
-    safeSocketOn('userTyping', handleUserTyping);
-    safeSocketOn('typing', handleUserTyping);
-    safeSocketOn('userOnline', handleUserOnlineStatus);
-    safeSocketOn('userOffline', handleUserOnlineStatus);
-    safeSocketOn('error', handleSocketError);
-    safeSocketOn('connect_error', handleSocketError);
+    socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('messageReceived', handleReceiveMessage); // Alternative event name
+    socket.on('userTyping', handleUserTyping);
+    socket.on('typing', handleUserTyping); // Alternative event name
+    socket.on('error', handleSocketError);
+    socket.on('roomJoined', handleRoomJoined);
+    socket.on('userJoined', handleUserJoined);
 
-    // Cleanup function
+    // Initialize socket connection
+    initializeSocket();
+
     return () => {
       console.log('🧹 Cleaning up socket listeners');
-      isInitializedRef.current = false;
-      
-      // Remove all event listeners
-      safeSocketOff('connect', handleConnect);
-      safeSocketOff('disconnect', handleDisconnect);
-      safeSocketOff('receiveMessage', handleReceiveMessage);
-      safeSocketOff('newMessage', handleReceiveMessage);
-      safeSocketOff('message', handleReceiveMessage);
-      safeSocketOff('userTyping', handleUserTyping);
-      safeSocketOff('typing', handleUserTyping);
-      safeSocketOff('userOnline', handleUserOnlineStatus);
-      safeSocketOff('userOffline', handleUserOnlineStatus);
-      safeSocketOff('error', handleSocketError);
-      safeSocketOff('connect_error', handleSocketError);
-      
-      // Leave room
-      safeSocketEmit('leaveRoom', { roomId: chatId, userId });
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('messageReceived', handleReceiveMessage);
+      socket.off('userTyping', handleUserTyping);
+      socket.off('typing', handleUserTyping);
+      socket.off('error', handleSocketError);
+      socket.off('roomJoined', handleRoomJoined);
+      socket.off('userJoined', handleUserJoined);
     };
-  }, [socket, chatId, userId, user?.username, user?.name, handleConnect, handleDisconnect, handleReceiveMessage, handleUserTyping, handleUserOnlineStatus, handleSocketError, safeSocketEmit, safeSocketOn, safeSocketOff]);
+  }, [socket, isConnected, chatId, handleReceiveMessage, handleUserTyping, handleSocketError, handleRoomJoined, handleUserJoined, initializeSocket]);
 
-  // Fetch initial data
+  // Fetch initial data when chat changes
   useEffect(() => {
     if (chatId) {
+      setMessages([]); // Clear messages when switching chats
       fetchChatInfo();
       fetchMessages();
     }
@@ -436,9 +457,8 @@ const ChatPage = () => {
 
   // Handle typing with enhanced debouncing
   const handleTyping = useCallback(() => {
-    if (!chatId || !userId) return;
+    if (!socket || !isConnected || !chatId || !userId || !socketReady) return;
     
-    // Only emit typing if not already typing
     if (!isTyping) {
       setIsTyping(true);
       const success = safeSocketEmit('typing', { 
@@ -447,9 +467,7 @@ const ChatPage = () => {
         userName: user?.username || user?.name || 'User',
         isTyping: true 
       });
-      if (success) {
-        console.log('⌨️ Started typing');
-      }
+      console.log('📝 Started typing');
     }
 
     // Clear existing timeout
@@ -460,44 +478,48 @@ const ChatPage = () => {
     // Set new timeout to stop typing
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      safeSocketEmit('typing', { 
-        chatId, 
-        userId, 
-        userName: user?.username || user?.name || 'User',
-        isTyping: false 
-      });
-      console.log('⌨️ Stopped typing');
-    }, 1500); // Reduced timeout for more responsive experience
-  }, [chatId, userId, isTyping, user?.username, user?.name, safeSocketEmit]);
+      if (socket && isConnected && socketReady) {
+        socket.emit('typing', { 
+          chatId, 
+          userId, 
+          isTyping: false 
+        });
+        console.log('✏️ Stopped typing');
+      }
+    }, 2000);
+  }, [socket, isConnected, chatId, userId, isTyping, socketReady]);
 
   // Enhanced send message function
   const sendMessage = useCallback(async (e) => {
     e.preventDefault();
     
+    if (!newMessage.trim() || !socket || !isConnected || !chatId || !userId || !socketReady) {
+      console.log('❌ Send message blocked:', { 
+        hasMessage: !!newMessage.trim(), 
+        hasSocket: !!socket, 
+        isConnected, 
+        chatId, 
+        userId,
+        socketReady
+      });
+      return;
+    }
+
     const messageContent = newMessage.trim();
-    if (!messageContent) {
-      return;
-    }
-
-    if (!chatId || !userId) {
-      console.error('❌ Cannot send message: missing requirements');
-      return;
-    }
-
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
+    const timestamp = new Date().toISOString();
+    
     const messageObj = {
-      id: tempId,
+      tempId,
       content: messageContent,
       senderId: userId,
       senderName: user?.username || user?.name || 'You',
       chatId,
-      createdAt: new Date().toISOString(),
-      status: MESSAGE_STATUS.SENDING,
-      isTemporary: true
+      createdAt: timestamp
     };
 
     try {
-      console.log('📤 Sending message:', messageContent);
+      console.log('📤 Sending message:', messageObj);
       
       // Clear the input immediately for better UX
       setNewMessage("");
@@ -514,7 +536,7 @@ const ChatPage = () => {
         isTyping: false 
       });
       
-      // Add message optimistically to UI
+      // Add message optimistically to UI (only for sender)
       setMessages(prev => [...prev, messageObj]);
       setTimeout(() => scrollToBottom(), 50);
       
@@ -561,48 +583,25 @@ const ChatPage = () => {
         console.log('⏳ Message queued for later delivery');
       }
       
+      console.log('✅ Message sent successfully');
+      
     } catch (error) {
       console.error('❌ Error sending message:', error);
-      
       // Restore message input on error
       setNewMessage(messageContent);
       
-      // Update message status to failed
-      setMessages(prev => prev.map(msg => 
-        msg.id === tempId 
-          ? { ...msg, status: MESSAGE_STATUS.FAILED }
-          : msg
-      ));
+      // Remove the optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.tempId !== tempId));
     }
   }, [newMessage, chatId, userId, user?.username, user?.name, isConnected, scrollToBottom, safeSocketEmit]);
 
-  // Auto-retry connection with exponential backoff
-  useEffect(() => {
-    if (!isConnected && retryCount < 5 && socket && typeof socket.connect === 'function') {
-      const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
-      
-      const timeout = setTimeout(() => {
-        console.log(`🔄 Attempting to reconnect... (${retryCount + 1}/5)`);
-        setRetryCount(prev => prev + 1);
-        setConnectionStatus(CONNECTION_STATUS.RECONNECTING);
-        
-        try {
-          socket.connect();
-        } catch (error) {
-          console.error('❌ Reconnection failed:', error);
-        }
-      }, backoffTime);
-      
-      reconnectTimeoutRef.current = timeout;
-      
-      return () => clearTimeout(timeout);
+  // Navigation
+  const handleBack = () => {
+    // Leave room when navigating away
+    if (socket && chatId) {
+      socket.emit('leaveRoom', { chatId, userId });
     }
-  }, [isConnected, retryCount, socket]);
-
-  // Navigation handler
-  const handleBack = useCallback(() => {
-    navigate("/", { state: { activeIndex: 3 } });
-  }, [navigate]);
+  };
 
   // Utility functions
   const formatMessageTime = useCallback((timestamp) => {
@@ -665,9 +664,11 @@ const ChatPage = () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      // Leave room when component unmounts
+      if (socket && chatId && userId) {
+        socket.emit('leaveRoom', { chatId, userId });
       }
+      socketInitializedRef.current = false;
     };
   }, []);
 
@@ -694,20 +695,22 @@ const ChatPage = () => {
           >
             <FaArrowLeft className="text-gray-600 dark:text-gray-300 text-lg" />
           </button>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                {otherUserName}
-              </h1>
-              {getConnectionStatusIcon()}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-xs text-gray-500 dark:text-gray-400">
-              {chatInfo?.productName && (
-                <span className="truncate">About: {chatInfo.productName}</span>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-cyan-400">{otherUserName}</h1>
+            {chatInfo?.productName && (
+              <p className="text-sm text-gray-400">
+                About: {chatInfo.productName}
+              </p>
+            )}
+            <div className="flex items-center space-x-2 text-xs">
+              <span className={`${isConnected && socketReady ? 'text-green-400' : 'text-red-400'}`}>
+                {isConnected && socketReady ? '● Connected' : '● Connecting...'}
+              </span>
+              {currentUserRole && (
+                <span className="text-blue-400">
+                  ({currentUserRole})
+                </span>
               )}
-              
               <div className="flex items-center space-x-2">
                 {otherUserTyping ? (
                   <span className="text-green-500 animate-pulse">typing...</span>
@@ -742,52 +745,41 @@ const ChatPage = () => {
             </div>
           </div>
         ) : (
-          messages.map((message, index) => {
-            const isOwnMessage = message.senderId === userId;
-            const showTime = index === 0 || 
-              new Date(message.createdAt) - new Date(messages[index - 1].createdAt) > 300000; // 5 minutes
-            
-            return (
-              <div key={message.id || `msg-${index}`} className="space-y-1">
-                {showTime && (
-                  <div className="text-center">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
-                      {formatMessageTime(message.createdAt)}
-                    </span>
-                  </div>
-                )}
-                
-                <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] sm:max-w-[70%] ${isOwnMessage ? "order-2" : "order-1"}`}>
-                    <div className={`relative px-4 py-2 rounded-2xl shadow-sm ${
-                      isOwnMessage
-                        ? "bg-blue-500 text-white rounded-br-md"
-                        : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200 dark:border-gray-700"
-                    }`}>
-                      <p className="text-sm leading-relaxed break-words">{message.content}</p>
-                      
-                      {isOwnMessage && (
-                        <div className="flex items-center justify-end mt-1 space-x-1">
-                          <span className="text-xs opacity-75">
-                            {formatMessageTime(message.createdAt)}
-                          </span>
-                          {getMessageStatusIcon(message.status)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {!isOwnMessage && (
-                      <div className="mt-1 ml-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatMessageTime(message.createdAt)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+          messages.map((message, index) => (
+            <div
+              key={message.id || message.tempId || `msg-${index}`}
+              className={`flex flex-col ${
+                message.senderId === userId ? "items-end" : "items-start"
+              }`}
+            >
+              <div className={`p-3 rounded-lg max-w-[70%] break-words ${
+                message.senderId === userId
+                  ? "bg-cyan-400 text-black"
+                  : "bg-gray-700 text-white"
+              }`}>
+                {message.content}
               </div>
-            );
-          })
+              <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                <span>
+                  {message.senderId === userId
+                    ? 'You'
+                    : (message.senderName || 'Other User')}
+                </span>
+                {message.createdAt && (
+                  <>
+                    <span>•</span>
+                    <span>{formatMessageTime(message.createdAt)}</span>
+                  </>
+                )}
+                {message.tempId && !message.id && (
+                  <>
+                    <span>•</span>
+                    <span className="text-yellow-500">Sending...</span>
+                  </>
+                )}
+              </div>
+            </div>
+          ))
         )}
         
         {/* Typing indicator */}
@@ -807,58 +799,24 @@ const ChatPage = () => {
       </div>
       
       {/* Message Input */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-        {/* Connection status warning */}
-        {!isConnected && (
-          <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <div className="flex items-center space-x-2 text-sm text-yellow-800 dark:text-yellow-200">
-              <FaExclamationTriangle className="text-yellow-500" />
-              <span>
-                {connectionStatus === CONNECTION_STATUS.RECONNECTING 
-                  ? `Reconnecting... (${retryCount}/5)`
-                  : 'Connection lost. Messages will be sent when reconnected.'
-                }
-              </span>
-            </div>
-          </div>
-        )}
-        
-        <form onSubmit={sendMessage} className="flex items-end space-x-2">
-          <div className="flex-1">
-            <textarea
-              ref={messageInputRef}
-              value={newMessage}
-              onChange={(e) => {
-                setNewMessage(e.target.value);
-                handleTyping();
-              }}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage(e);
-                }
-                handleTyping();
-              }}
-              placeholder="Type a message..."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full resize-none bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32"
-              rows={1}
-              style={{
-                minHeight: '40px',
-                maxHeight: '120px',
-                overflowY: newMessage.split('\n').length > 3 ? 'scroll' : 'hidden'
-              }}
-              disabled={!chatId || !userId}
-            />
-          </div>
-          
+      <div className="p-4 border-t border-cyan-400 bg-gray-900">
+        <form onSubmit={sendMessage} className="flex space-x-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
+            placeholder={isConnected && socketReady ? "Type a message..." : "Connecting..."}
+            disabled={!isConnected || !socketReady}
+            className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            maxLength={1000}
+          />
           <button
             type="submit"
-            disabled={!newMessage.trim() || !chatId || !userId}
-            className={`p-2 rounded-full transition-all duration-200 ${
-              newMessage.trim() && chatId && userId
-                ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-                : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-            }`}
+            disabled={!newMessage.trim() || !isConnected || !socketReady}
+            className="bg-cyan-400 text-black px-6 py-2 rounded-lg hover:bg-cyan-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaPaperPlane className="text-sm" />
           </button>

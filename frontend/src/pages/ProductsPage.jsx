@@ -10,7 +10,7 @@ export const ProductsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cartItems, cartError, loading, fetchCartItems } = useCart();
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
   const [chatLoading, setChatLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -52,15 +52,16 @@ export const ProductsPage = () => {
       if (response && response.chatId) {
         // Handle socket connection safely
         try {
-          if (socket) {
+          if (socket && typeof socket.emit === 'function') {
             // Ensure socket is connected before using it
-            if (!socket.connected) {
-              socket.connect();
+            if (!connected) {
+              // This part of the logic needs to be handled by the SocketContext
+              // For now, we'll assume the context will manage connection
             }
             
             // Wait a moment for connection to establish
             setTimeout(() => {
-              if (socket.connected) {
+              if (connected) {
                 socket.emit('joinRoom', response.chatId);
                 socket.emit('userJoin', userId);
               }
