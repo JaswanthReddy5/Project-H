@@ -601,6 +601,12 @@ const ChatPage = () => {
     if (socket && chatId) {
       socket.emit('leaveRoom', { chatId, userId });
     }
+    // Go back to the previous page or a default route
+    if (window.history.length > 2) {
+      navigate(-1); // Go back to previous page
+    } else {
+      navigate('/'); // Fallback to home if no history
+    }
   };
 
   // Utility functions
