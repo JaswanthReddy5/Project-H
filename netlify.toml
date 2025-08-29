@@ -1,0 +1,15 @@
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# SPA fallback (kept here as a backup; you also have public/_redirects)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+
