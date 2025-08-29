@@ -22,7 +22,8 @@ app.use(cors({
     'http://192.168.239.96:5173',
     'http://192.168.239.96:5174',
     'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174'
+    'http://127.0.0.1:5174',
+    'https://magnificent-kringle-05c986.netlify.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -367,7 +368,8 @@ const io = new Server(server, {
       'http://192.168.239.96:5173',
       'http://192.168.239.96:5174',
       'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174'
+      'http://127.0.0.1:5174',
+      'https://magnificent-kringle-05c986.netlify.app'
     ],
     methods: ['GET', 'POST'],
     credentials: true,
