@@ -166,87 +166,15 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 // Restaurant routes with better error handling
 app.get("/api/restaurants", async (req, res) => {
   try {
-    // Check if restaurants exist
-    let restaurants = await Restaurant.find();
+    // Get restaurants from MongoDB only - no more hardcoded sample data
+    const restaurants = await Restaurant.find();
     
-    // Only add sample data if no restaurants exist
     if (restaurants.length === 0) {
-      // Clear any existing restaurants first
-      await Restaurant.deleteMany({});
-      console.log("Cleared existing restaurants");
-
-      // Add sample data
-      const sampleRestaurants = [
-        {
-          name: "Andra Tiffins&Snakes",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1hkMRslqFPQ76LrfJ4UNvfErongZ6_ZH3/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "9059937090"
-        },
-        {
-          name: "Sunny Days",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://drive.google.com/file/d/1mdM-vRwzpDbmNH-ibWU1iMbCp4eeQwwy/view?usp=sharing",
-          menuUrl: "https://drive.google.com/file/d/1hG9vdTpduY-CYbWtJgu2pAMwhdQCAPiU/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "9381878144"
-        },
-        {
-          name: "Butty",
-          description: "Authentic Chinese cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1h0JKN3MjiK0jGc9mjusumERr-JT1dh3p/view",
-          category: "Chinese",
-          phoneNumber: "7200318905"
-        },
-        {
-          name: "Milan",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1hh3c9Do16vpuK-Z1PYPu7B48zd9dHJRX/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "9363467122"
-        },
-        {
-          name: "google+",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1hjWV0mtwOWq_I37ntFQ1LsKPEU9-QIY7/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "9940383952"
-        },
-        
-        {
-          name: "Chocomans Cakes",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1hlI-R4sQoXKbaV5CzCyIL-kYTIonUspw/view?usp=sharing",
-          category: "Indian",
-        },
-        {
-          name: "Sohana Biryani House",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1hlB_Pe4PqzhiD8TYoMzKJ7hTuQYC1nxT/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "6379887543"
-        },
-        {
-          name: "Kings Plaza",
-          description: "Authentic Hyderabadi Biryani and Indian cuisine",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-          menuUrl: "https://drive.google.com/file/d/1iQmYbTPBYi20-nlcJvUF3K57aCZOTCPf/view?usp=sharing",
-          category: "Indian",
-          phoneNumber: "9176160631"
-        }
-      ];
-
-      restaurants = await Restaurant.create(sampleRestaurants);
-      console.log("Added sample restaurants:", restaurants.map(r => r.name).join(", "));
+      console.log("No restaurants found in database");
+      return res.json([]);
     }
 
+    console.log(`Found ${restaurants.length} restaurants in database`);
     res.json(restaurants);
   } catch (error) {
     console.error("Error in /api/restaurants:", error);
