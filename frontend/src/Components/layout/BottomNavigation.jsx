@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import { FaHome, FaChartBar, FaShoppingCart, FaUser, FaPlus } from "react-icons/fa";
+import { FaHome, FaUtensils, FaShoppingCart, FaUser, FaPlus } from "react-icons/fa";
 
 export const BottomNavigation = ({ activeIndex, onNavigate, onShowForm }) => {
   const navItems = [
     { icon: FaHome, label: 'Home' },
-    { icon: FaChartBar, label: 'Analytics' },
+    { icon: FaUtensils, label: 'Food' },
     { icon: FaPlus, label: 'Add', isAdd: true },
     { icon: FaShoppingCart, label: 'Products' },
     { icon: FaUser, label: 'Profile' }

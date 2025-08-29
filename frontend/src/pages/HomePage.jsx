@@ -6,6 +6,7 @@ import { WorkPage } from './WorkPage';
 import { RestaurantsPage } from './RestaurantsPage';
 import { ProductsPage } from './ProductsPage';
 import { ProfilePage } from './ProfilePage';
+import { MaintenancePage } from "../Components/MaintenancePage";
 
 export const HomePage = () => {
   const location = useLocation();
@@ -21,15 +22,15 @@ export const HomePage = () => {
   const renderCurrentPage = () => {
     switch(activeIndex) {
       case 0:
-        return <WorkPage />;
+        return <MaintenancePage pageName="Home" />;
       case 1:
         return <RestaurantsPage />;
       case 3:
-        return <ProductsPage />;
+        return <MaintenancePage pageName="Products" />;
       case 4:
         return <ProfilePage />;
       default:
-        return <WorkPage />;
+        return <MaintenancePage pageName="Home" />;
     }
   };
 
