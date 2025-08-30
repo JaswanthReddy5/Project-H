@@ -195,6 +195,32 @@ app.post("/api/restaurants", async (req, res) => {
   }
 });
 
+// Update restaurant endpoint
+app.put("/api/restaurants/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+    
+    console.log(`Updating restaurant ${id} with imageUrl: ${imageUrl}`);
+    
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      id, 
+      { imageUrl }, 
+      { new: true }
+    );
+    
+    if (!restaurant) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+    
+    console.log("Restaurant updated successfully");
+    res.json(restaurant);
+  } catch (err) {
+    console.error("Error in PUT /api/restaurants:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Add a test route to verify server is running
 app.get("/api/test", (req, res) => {
   res.json({ 
