@@ -180,20 +180,6 @@ export const SocketProvider = ({ children }) => {
   return (
     <SocketContext.Provider value={contextValue}>
       {children}
-      {error && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-sm">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm flex-1">{error}</span>
-            <button 
-              onClick={reconnect}
-              className="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
-              disabled={reconnectAttempts >= maxReconnectAttempts}
-            >
-              {reconnectAttempts >= maxReconnectAttempts ? 'Failed' : 'Retry'}
-            </button>
-          </div>
-        </div>
-      )}
     </SocketContext.Provider>
   );
 };

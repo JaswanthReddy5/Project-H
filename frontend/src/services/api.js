@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://192.168.35.239:5000';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://project-h-zv5o.onrender.com';
 
 export const itemsAPI = {
   fetchItems: async () => {
