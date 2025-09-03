@@ -22,15 +22,17 @@ export const HomePage = () => {
   const renderCurrentPage = () => {
     switch(activeIndex) {
       case 0:
-        return <MaintenancePage pageName="Home" />;
-      case 1:
+        // First tab now shows Food (Restaurants)
         return <RestaurantsPage />;
+      case 1:
+        // Second tab now shows Home (under maintenance)
+        return <MaintenancePage pageName="Home" />;
       case 3:
         return <MaintenancePage pageName="Products" />;
       case 4:
         return <ProfilePage />;
       default:
-        return <MaintenancePage pageName="Home" />;
+        return <RestaurantsPage />;
     }
   };
 
