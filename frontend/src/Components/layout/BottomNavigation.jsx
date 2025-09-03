@@ -3,8 +3,9 @@ import { FaHome, FaUtensils, FaShoppingCart, FaUser, FaPlus } from "react-icons/
 
 export const BottomNavigation = ({ activeIndex, onNavigate, onShowForm }) => {
   const navItems = [
-    { icon: FaHome, label: 'Home' },
+    // Swap order: Food first, then Home
     { icon: FaUtensils, label: 'Food' },
+    { icon: FaHome, label: 'Home' },
     { icon: FaPlus, label: 'Add', isAdd: true },
     { icon: FaShoppingCart, label: 'Products' },
     { icon: FaUser, label: 'Profile' }
