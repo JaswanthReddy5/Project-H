@@ -12,7 +12,7 @@ export const CONNECTION_STATUS = {
   ERROR: 'error'
 };
 
-// Socket configuration with enhanced options
+// Socket configuration hardened for restrictive networks (e.g., campus/enterprise)
 const socketConfig = {
   autoConnect: true,
   reconnection: true,
@@ -22,16 +22,18 @@ const socketConfig = {
   maxReconnectionAttempts: 5,
   timeout: 20000,
   forceNew: false,
-  transports: ['websocket', 'polling'],
-  upgrade: true,
-  rememberUpgrade: true,
-  // Enhanced ping/pong settings
+  // Force HTTP long-polling to avoid websocket blocks on restrictive networks
+  transports: ['polling'],
+  upgrade: false,
+  rememberUpgrade: false,
+  // Keepalive settings
   pingTimeout: 60000,
   pingInterval: 25000,
   // Additional options for stability
   randomizationFactor: 0.5,
   secure: window.location.protocol === 'https:',
-  withCredentials: true,
+  // Avoid third-party cookie issues on locked-down networks
+  withCredentials: false,
   // Custom headers for authentication
   extraHeaders: {},
   // Query parameters for initial connection
@@ -61,7 +63,7 @@ const initializeSocket = (authToken = null, userId = null) => {
     socketInstance.disconnect();
   }
 
-  console.log('🚀 Initializing socket connection...');
+  console.log('🚀 Initializing socket connection...', { server: SERVER_URL, transports: socketConfig.transports });
   
   // Update config with auth info if provided
   const config = { ...socketConfig };
