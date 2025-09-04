@@ -20,7 +20,7 @@ export const BottomNavigation = ({ activeIndex, onNavigate, onShowForm }) => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 w-full flex justify-around items-center bg-black py-2 rounded-t-2xl shadow-[0_-2.2rem_10px_rgba(0,255,255,0.5)]">
+    <div className="fixed bottom-0 left-0 w-full flex justify-around items-center bg-black py-2 rounded-t-2xl shadow-[0_-1.5rem_10px_rgba(0,255,255,0.5)]">
       {navItems.map(({ icon: Icon, isAdd }, index) => (
         <div 
           key={index} 
