@@ -11,9 +11,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Convert Google Drive view/share URL to direct embed URL
+  // Convert Google Drive fileId to a faster, direct view URL
   const getEmbedUrl = (fileId: string) => {
-    return `https://drive.google.com/file/d/${fileId}/preview?embedded=true&rm=minimal`;
+    // uc?export=view is generally faster than /file/.../preview
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
   };
 
   useEffect(() => {
@@ -57,6 +58,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           width="100%"
           height="100%"
           allow="autoplay"
+          loading="lazy"
+          referrerPolicy="no-referrer"
           className="rounded-lg md:rounded-3xl"
           style={{ 
             border: 'none',
