@@ -116,7 +116,11 @@ export const RestaurantList = () => {
                 <img 
                   src={restaurant.imageUrl} 
                   alt={restaurant.name}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-48 object-cover object-center"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center'
+                  }}
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = "https://placehold.co/400x300/1a1a1a/ffffff?text=No+Image";
