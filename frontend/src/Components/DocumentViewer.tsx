@@ -11,10 +11,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Convert Google Drive fileId to a faster, direct view URL
+  // Convert Google Drive fileId to the preview embed URL (most reliable)
   const getEmbedUrl = (fileId: string) => {
-    // uc?export=view is generally faster than /file/.../preview
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    return `https://drive.google.com/file/d/${fileId}/preview?embedded=true&rm=minimal`;
   };
 
   useEffect(() => {
