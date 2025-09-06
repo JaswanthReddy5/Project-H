@@ -158,16 +158,18 @@ export const RestaurantList = () => {
                 <div className="p-4">
                   <h2 className="text-xl font-bold text-white mb-2">{restaurant.name}</h2>
                   <div className="flex space-x-4">
-                    <button
-                      onClick={() => handleCall(restaurant.phoneNumber)}
-                      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all duration-300 flex items-center gap-2 relative overflow-hidden group"
-                    >
-                      <span className="relative z-10 flex items-center gap-2">
-                        <FaPhone /> Call
-                      </span>
-                      <div className="absolute inset-0 bg-green-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
-                      <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
-                    </button>
+                    {restaurant.name !== "Zinger" && (
+                      <button
+                        onClick={() => handleCall(restaurant.phoneNumber)}
+                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all duration-300 flex items-center gap-2 relative overflow-hidden group"
+                      >
+                        <span className="relative z-10 flex items-center gap-2">
+                          <FaPhone /> Call
+                        </span>
+                        <div className="absolute inset-0 bg-green-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
+                        <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleMenuClick(restaurant.menuUrl)}
                       className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-all duration-300 relative overflow-hidden group"
