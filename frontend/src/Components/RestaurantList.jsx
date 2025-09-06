@@ -83,7 +83,33 @@ export const RestaurantList = () => {
   };
 
   return (
-    <div className="p-6 bg-black min-h-screen text-white">
+    <div className="p-6 bg-black min-h-screen text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Floating Food Icons */}
+        <div className="absolute top-10 left-10 text-4xl opacity-20 animate-float-slow">🍕</div>
+        <div className="absolute top-32 right-16 text-3xl opacity-15 animate-float-medium">🍔</div>
+        <div className="absolute top-64 left-1/4 text-5xl opacity-10 animate-float-fast">🍜</div>
+        <div className="absolute top-96 right-1/3 text-3xl opacity-20 animate-float-slow">🍰</div>
+        <div className="absolute top-1/3 left-1/2 text-4xl opacity-15 animate-float-medium">🍖</div>
+        <div className="absolute top-2/3 right-1/4 text-3xl opacity-10 animate-float-fast">🥘</div>
+        <div className="absolute top-1/4 right-10 text-4xl opacity-20 animate-float-slow">🍝</div>
+        <div className="absolute top-3/4 left-16 text-3xl opacity-15 animate-float-medium">🍤</div>
+        
+        {/* Kitchen Utensil Silhouettes */}
+        <div className="absolute top-20 right-1/4 text-6xl opacity-5 animate-float-slow">🔪</div>
+        <div className="absolute top-40 left-1/3 text-5xl opacity-8 animate-float-medium">🍴</div>
+        <div className="absolute top-60 right-1/2 text-4xl opacity-6 animate-float-fast">🥄</div>
+        <div className="absolute top-80 left-1/5 text-5xl opacity-7 animate-float-slow">🍽️</div>
+        
+        {/* Steam Effects */}
+        <div className="absolute bottom-0 left-0 w-full h-32 pointer-events-none">
+          <div className="absolute bottom-0 left-1/4 w-2 h-16 bg-gradient-to-t from-cyan-400/20 to-transparent rounded-full animate-steam-1"></div>
+          <div className="absolute bottom-0 left-1/2 w-1 h-20 bg-gradient-to-t from-cyan-300/15 to-transparent rounded-full animate-steam-2"></div>
+          <div className="absolute bottom-0 right-1/3 w-2 h-14 bg-gradient-to-t from-cyan-500/25 to-transparent rounded-full animate-steam-3"></div>
+          <div className="absolute bottom-0 right-1/4 w-1 h-18 bg-gradient-to-t from-cyan-400/20 to-transparent rounded-full animate-steam-1"></div>
+        </div>
+      </div>
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="text-cyan-400 text-xl">Loading restaurants...</div>
