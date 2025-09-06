@@ -10,27 +10,47 @@ const { Server } = require('socket.io');
 const { auth, isAdmin } = require("./middleware/auth");
 const contentModeration = require("./middleware/contentModeration");
 const authRoutes = require('./routes/auth');
+const {
+  authRateLimit,
+  apiRateLimit,
+  strictRateLimit,
+  securityHeaders,
+  validateInput,
+  sanitizeInput,
+  requestSizeLimit,
+  validateOrigin,
+  protectApiKey,
+  restaurantValidation,
+  authValidation
+} = require('./middleware/security');
 
 const app = express();
-app.use(express.json());
 
-// Configure CORS with proper origin handling - Updated to include your IP
+// Security middleware (order matters!)
+app.use(securityHeaders);
+app.use(requestSizeLimit);
+app.use(validateOrigin);
+app.use(sanitizeInput);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Configure STRICT CORS - Only allow production domains
 app.use(cors({
   origin: [
-    'http://localhost:5173', 
-    'http://localhost:5174',
-    'http://192.168.239.96:5173',
-    'http://192.168.239.96:5174',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'https://magnificent-kringle-05c986.netlify.app'
+    'https://magnificent-kringle-05c986.netlify.app',
+    'https://project-h-zv5o.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  optionsSuccessStatus: 200
 }));
 
-// Routes
+// Apply rate limiting to routes
+app.use('/api/auth', authRateLimit);
+app.use('/api', apiRateLimit);
+
+// Routes with security middleware
 app.use('/api/auth', authRoutes);
 
 // Serve static files from the 'public' directory
@@ -51,38 +71,198 @@ mongoose.connection.on("error", (err) => {
 });
 
 const ItemSchema = new mongoose.Schema({
-  type: String,
-  work: String,
-  amount: String,
-  time: String,
-  productName: String,
-  price: String,
-  quantity: String,
-  sellerId: String,
+  type: {
+    type: String,
+    required: true,
+    enum: ['product', 'work'],
+    trim: true
+  },
+  work: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  amount: {
+    type: String,
+    trim: true,
+    maxlength: 50
+  },
+  time: {
+    type: String,
+    trim: true,
+    maxlength: 100
+  },
+  productName: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 200
+  },
+  price: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 50
+  },
+  quantity: {
+    type: String,
+    trim: true,
+    maxlength: 50
+  },
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  updatedAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, {
+  timestamps: true
 });
 
 const ChatSchema = new mongoose.Schema({
-  participants: [String],
-  itemId: String,
-  createdAt: { type: Date, default: Date.now },
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }],
+  itemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Item',
+    required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  updatedAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, {
+  timestamps: true
 });
 
 const MessageSchema = new mongoose.Schema({
-  chatId: String,
-  content: String,
-  senderId: String,
-  senderName: String,
-  createdAt: { type: Date, default: Date.now },
+  chatId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat',
+    required: true
+  },
+  content: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 1000
+  },
+  senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  senderName: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100
+  },
+  isEdited: {
+    type: Boolean,
+    default: false
+  },
+  editedAt: {
+    type: Date,
+    default: null
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, {
+  timestamps: true
 });
 
 const RestaurantSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  imageUrl: String,
-  menuUrl: String,
-  phoneNumber: String,
-  category: String,
-  createdAt: { type: Date, default: Date.now }
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  imageUrl: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^https?:\/\/.+/.test(v);
+      },
+      message: 'Image URL must be a valid HTTP/HTTPS URL'
+    }
+  },
+  menuUrl: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^https?:\/\/.+/.test(v);
+      },
+      message: 'Menu URL must be a valid HTTP/HTTPS URL'
+    }
+  },
+  phoneNumber: {
+    type: String,
+    required: true,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^[\+]?[1-9][\d]{0,15}$/.test(v);
+      },
+      message: 'Phone number must be a valid international format'
+    }
+  },
+  category: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 50
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  updatedAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, {
+  timestamps: true
 });
 
 const Item = mongoose.model("Item", ItemSchema);
@@ -90,10 +270,13 @@ const Chat = mongoose.model("Chat", ChatSchema);
 const Message = mongoose.model("Message", MessageSchema);
 const Restaurant = mongoose.model("Restaurant", RestaurantSchema);
 
-// POST route for adding items
-app.post("/api/add", async (req, res) => {
+// POST route for adding items - SECURED
+app.post("/api/add", auth, strictRateLimit, async (req, res) => {
   try {
-    const newItem = new Item(req.body);
+    const newItem = new Item({
+      ...req.body,
+      sellerId: req.user._id // Ensure user can only add items for themselves
+    });
     await newItem.save();
     res.status(201).json(newItem);
 
@@ -163,11 +346,11 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// Restaurant routes with better error handling
+// Restaurant routes with SECURITY and validation
 app.get("/api/restaurants", async (req, res) => {
   try {
     // Get restaurants from MongoDB only - no more hardcoded sample data
-    const restaurants = await Restaurant.find();
+    const restaurants = await Restaurant.find().select('-__v'); // Remove version field
     
     if (restaurants.length === 0) {
       console.log("No restaurants found in database");
@@ -182,7 +365,7 @@ app.get("/api/restaurants", async (req, res) => {
   }
 });
 
-app.post("/api/restaurants", async (req, res) => {
+app.post("/api/restaurants", auth, isAdmin, restaurantValidation, validateInput, async (req, res) => {
   try {
     console.log("Adding new restaurant:", req.body);
     const restaurant = new Restaurant(req.body);
@@ -195,11 +378,16 @@ app.post("/api/restaurants", async (req, res) => {
   }
 });
 
-// Update restaurant endpoint
-app.put("/api/restaurants/:id", async (req, res) => {
+// Update restaurant endpoint - SECURED
+app.put("/api/restaurants/:id", auth, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { imageUrl } = req.body;
+    
+    // Validate imageUrl if provided
+    if (imageUrl && !imageUrl.match(/^https?:\/\/.+/)) {
+      return res.status(400).json({ error: "Invalid image URL format" });
+    }
     
     console.log(`Updating restaurant ${id} with imageUrl: ${imageUrl}`);
     
@@ -221,18 +409,22 @@ app.put("/api/restaurants/:id", async (req, res) => {
   }
 });
 
-// Add a test route to verify server is running
-app.get("/api/test", (req, res) => {
+// Add a test route to verify server is running - SECURED
+app.get("/api/test", protectApiKey, (req, res) => {
   res.json({ 
     message: "Server is running!",
     timestamp: new Date().toISOString(),
-    ip: req.ip
+    version: "1.0.0"
   });
 });
 
-// Add a basic health check route
+// Add a basic health check route - PUBLIC
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ 
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 // Protected routes with authentication and content moderation
@@ -315,23 +507,17 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      'http://localhost:5173', 
-      'http://localhost:5174', 
-      'http://192.168.35.239:5173', 
-      'http://192.168.35.239:5174',
-      'http://192.168.239.96:5173',
-      'http://192.168.239.96:5174',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-      'https://magnificent-kringle-05c986.netlify.app'
+      'https://magnificent-kringle-05c986.netlify.app',
+      'https://project-h-zv5o.onrender.com'
     ],
     methods: ['GET', 'POST'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
   },
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Store active users and their socket IDs
