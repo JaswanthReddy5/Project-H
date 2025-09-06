@@ -53,6 +53,16 @@ app.use('/api', apiRateLimit);
 // Routes with security middleware
 app.use('/api/auth', authRoutes);
 
+// Global authentication middleware for protected routes
+app.use('/api/restaurants', (req, res, next) => {
+  // Skip authentication for GET requests (public)
+  if (req.method === 'GET') {
+    return next();
+  }
+  // Require authentication for POST, PUT, DELETE
+  return auth(req, res, next);
+});
+
 // Serve static files from the 'public' directory
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
@@ -366,10 +376,13 @@ app.get("/api/restaurants", async (req, res) => {
   }
 });
 
-app.post("/api/restaurants", auth, isAdmin, restaurantValidation, validateInput, async (req, res) => {
+app.post("/api/restaurants", isAdmin, restaurantValidation, validateInput, async (req, res) => {
   try {
     console.log("Adding new restaurant:", req.body);
-    const restaurant = new Restaurant(req.body);
+    const restaurant = new Restaurant({
+      ...req.body,
+      createdBy: req.user._id
+    });
     await restaurant.save();
     console.log("Restaurant added successfully");
     res.status(201).json(restaurant);
@@ -380,7 +393,7 @@ app.post("/api/restaurants", auth, isAdmin, restaurantValidation, validateInput,
 });
 
 // Update restaurant endpoint - SECURED
-app.put("/api/restaurants/:id", auth, isAdmin, async (req, res) => {
+app.put("/api/restaurants/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { imageUrl } = req.body;
