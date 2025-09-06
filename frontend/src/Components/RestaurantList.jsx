@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaPhone } from "react-icons/fa";
 import DocumentViewer from "./DocumentViewer";
@@ -22,8 +22,6 @@ export const RestaurantList = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [hasAddedSampleData, setHasAddedSampleData] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState(null);
-  const [scrollY, setScrollY] = useState(0);
-  const containerRef = useRef(null);
 
   const fetchRestaurants = async () => {
     try {
@@ -59,16 +57,6 @@ export const RestaurantList = () => {
 
     return () => clearInterval(retryInterval);
   }, [error, retryCount]);
-
-  // Scroll effect for cards
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const handleCall = (phone) => {
     window.location.href = `tel:${phone}`;
@@ -148,14 +136,7 @@ export const RestaurantList = () => {
         </div>
       ) : (
         <div className="container mx-auto px-4 py-8">
-          <div 
-            ref={containerRef}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            style={{
-              transform: `translateY(${scrollY * 0.1}px)`,
-              transition: 'transform 0.1s ease-out'
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {restaurants.map((restaurant) => (
               <div key={restaurant._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg group relative hover:shadow-cyan-500/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:rotate-1">
                 {/* Glowing orb effect on hover */}
