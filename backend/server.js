@@ -347,10 +347,11 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 });
 
 // Restaurant routes with SECURITY and validation
+// PUBLIC endpoint - no authentication required for viewing restaurants
 app.get("/api/restaurants", async (req, res) => {
   try {
     // Get restaurants from MongoDB only - no more hardcoded sample data
-    const restaurants = await Restaurant.find().select('-__v'); // Remove version field
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy'); // Remove version field and creator info
     
     if (restaurants.length === 0) {
       console.log("No restaurants found in database");
@@ -409,8 +410,8 @@ app.put("/api/restaurants/:id", auth, isAdmin, async (req, res) => {
   }
 });
 
-// Add a test route to verify server is running - SECURED
-app.get("/api/test", protectApiKey, (req, res) => {
+// Add a test route to verify server is running - PUBLIC
+app.get("/api/test", (req, res) => {
   res.json({ 
     message: "Server is running!",
     timestamp: new Date().toISOString(),

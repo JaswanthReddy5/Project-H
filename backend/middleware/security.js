@@ -141,7 +141,15 @@ const protectApiKey = (req, res, next) => {
   const validApiKey = process.env.API_KEY;
 
   // Skip API key check for public endpoints
-  const publicEndpoints = ['/api/test', '/health', '/api/restaurants'];
+  const publicEndpoints = [
+    '/api/test', 
+    '/health', 
+    '/api/restaurants',  // Public restaurant listing
+    '/api/items',        // Public items listing
+    '/api/chat',         // Chat endpoints (handled by auth middleware)
+    '/api/start-chat'    // Start chat endpoint
+  ];
+  
   if (publicEndpoints.includes(req.path)) {
     return next();
   }
