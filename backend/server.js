@@ -398,6 +398,29 @@ app.put("/api/restaurants/:id", (req, res) => {
   });
 });
 
+// TEMPORARY: Delete restaurant endpoint for cleanup
+app.delete("/api/restaurants/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️  Deleting restaurant with ID: ${id}`);
+    
+    const restaurant = await Restaurant.findByIdAndDelete(id);
+    
+    if (!restaurant) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+    
+    console.log(`✅ Deleted restaurant: ${restaurant.name}`);
+    res.json({ 
+      message: "Restaurant deleted successfully",
+      deletedRestaurant: restaurant.name
+    });
+  } catch (err) {
+    console.error("Error in DELETE /api/restaurants:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Add a test route to verify server is running - PUBLIC
 app.get("/api/test", (req, res) => {
   res.json({ 
