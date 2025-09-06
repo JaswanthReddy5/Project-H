@@ -378,51 +378,24 @@ app.get("/api/restaurants", async (req, res) => {
   }
 });
 
-app.post("/api/restaurants", auth, isAdmin, restaurantValidation, validateInput, async (req, res) => {
-  try {
-    console.log("Adding new restaurant:", req.body);
-    const restaurant = new Restaurant({
-      ...req.body,
-      createdBy: req.user._id
-    });
-    await restaurant.save();
-    console.log("Restaurant added successfully");
-    res.status(201).json(restaurant);
-  } catch (err) {
-    console.error("Error in POST /api/restaurants:", err);
-    res.status(500).json({ error: err.message });
-  }
+// TEMPORARY SECURITY FIX - Disable restaurant creation
+app.post("/api/restaurants", (req, res) => {
+  console.log("🚨 SECURITY ALERT: Unauthorized restaurant creation attempt blocked");
+  res.status(403).json({ 
+    error: "Restaurant creation temporarily disabled for security",
+    message: "Contact administrator",
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Update restaurant endpoint - SECURED
-app.put("/api/restaurants/:id", auth, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { imageUrl } = req.body;
-    
-    // Validate imageUrl if provided
-    if (imageUrl && !imageUrl.match(/^https?:\/\/.+/)) {
-      return res.status(400).json({ error: "Invalid image URL format" });
-    }
-    
-    console.log(`Updating restaurant ${id} with imageUrl: ${imageUrl}`);
-    
-    const restaurant = await Restaurant.findByIdAndUpdate(
-      id, 
-      { imageUrl }, 
-      { new: true }
-    );
-    
-    if (!restaurant) {
-      return res.status(404).json({ error: "Restaurant not found" });
-    }
-    
-    console.log("Restaurant updated successfully");
-    res.json(restaurant);
-  } catch (err) {
-    console.error("Error in PUT /api/restaurants:", err);
-    res.status(500).json({ error: err.message });
-  }
+// TEMPORARY SECURITY FIX - Disable restaurant updates
+app.put("/api/restaurants/:id", (req, res) => {
+  console.log("🚨 SECURITY ALERT: Unauthorized restaurant update attempt blocked");
+  res.status(403).json({ 
+    error: "Restaurant updates temporarily disabled for security",
+    message: "Contact administrator",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Add a test route to verify server is running - PUBLIC
