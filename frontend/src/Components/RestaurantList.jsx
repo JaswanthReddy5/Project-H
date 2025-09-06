@@ -138,7 +138,10 @@ export const RestaurantList = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {restaurants.map((restaurant) => (
-              <div key={restaurant._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+              <div key={restaurant._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg group relative hover:shadow-cyan-500/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:rotate-1">
+                {/* Glowing orb effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/10 to-cyan-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-300/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
                 <img 
                   src={restaurant.imageUrl} 
                   alt={restaurant.name}
@@ -157,15 +160,21 @@ export const RestaurantList = () => {
                   <div className="flex space-x-4">
                     <button
                       onClick={() => handleCall(restaurant.phoneNumber)}
-                      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors flex items-center gap-2"
+                      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all duration-300 flex items-center gap-2 relative overflow-hidden group"
                     >
-                      <FaPhone /> Call
+                      <span className="relative z-10 flex items-center gap-2">
+                        <FaPhone /> Call
+                      </span>
+                      <div className="absolute inset-0 bg-green-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
+                      <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
                     </button>
                     <button
                       onClick={() => handleMenuClick(restaurant.menuUrl)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-all duration-300 relative overflow-hidden group"
                     >
-                      Menu
+                      <span className="relative z-10">Menu</span>
+                      <div className="absolute inset-0 bg-blue-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
+                      <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
                     </button>
                   </div>
                 </div>
