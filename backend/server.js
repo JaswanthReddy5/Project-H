@@ -55,11 +55,13 @@ app.use('/api/auth', authRoutes);
 
 // Global authentication middleware for protected routes
 app.use('/api/restaurants', (req, res, next) => {
+  console.log(`Restaurant middleware: ${req.method} ${req.path}`);
   // Skip authentication for GET requests (public)
   if (req.method === 'GET') {
     return next();
   }
   // Require authentication for POST, PUT, DELETE
+  console.log('Requiring authentication for:', req.method);
   return auth(req, res, next);
 });
 
@@ -376,7 +378,7 @@ app.get("/api/restaurants", async (req, res) => {
   }
 });
 
-app.post("/api/restaurants", isAdmin, restaurantValidation, validateInput, async (req, res) => {
+app.post("/api/restaurants", auth, isAdmin, restaurantValidation, validateInput, async (req, res) => {
   try {
     console.log("Adding new restaurant:", req.body);
     const restaurant = new Restaurant({
@@ -393,7 +395,7 @@ app.post("/api/restaurants", isAdmin, restaurantValidation, validateInput, async
 });
 
 // Update restaurant endpoint - SECURED
-app.put("/api/restaurants/:id", isAdmin, async (req, res) => {
+app.put("/api/restaurants/:id", auth, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { imageUrl } = req.body;
