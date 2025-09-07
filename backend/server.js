@@ -26,6 +26,9 @@ const {
 
 const app = express();
 
+// FORCE RESTART - MAJOR CHANGE
+console.log("🔄 FORCING RESTART - MAJOR CHANGE TO TRIGGER DEPLOYMENT");
+
 // CRITICAL SECURITY UPDATE - FORCE DEPLOYMENT
 console.log("🔒 SECURITY: Server starting with critical security updates - v5.0 - WORKING FIX");
 
