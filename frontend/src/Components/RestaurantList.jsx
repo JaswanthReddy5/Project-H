@@ -158,7 +158,7 @@ export const RestaurantList = () => {
                 <div className="p-4">
                   <h2 className="text-xl font-bold text-white mb-2">{restaurant.name}</h2>
                   <div className="flex space-x-4">
-                    {restaurant.name !== "Zinger" && (
+                    {restaurant.name !== "Zinger" && restaurant.name !== "Shakes and Desserts" && (
                       <button
                         onClick={() => handleCall(restaurant.phoneNumber)}
                         className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all duration-300 flex items-center gap-2 relative overflow-hidden group"
