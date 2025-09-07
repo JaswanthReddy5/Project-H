@@ -49,16 +49,7 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// CRITICAL SECURITY: Block old endpoint immediately
-app.use('/api/restaurants', (req, res, next) => {
-  console.log("🚨 CRITICAL SECURITY: Blocking access to old restaurant endpoint");
-  return res.status(403).json({
-    error: "Forbidden",
-    message: "This endpoint has been permanently disabled for security reasons",
-    code: "ENDPOINT_DISABLED",
-    timestamp: new Date().toISOString()
-  });
-});
+// REMOVED: Blocking middleware that was preventing secure endpoint from working
 
 // Apply rate limiting to routes
 app.use('/api/auth', authRateLimit);
