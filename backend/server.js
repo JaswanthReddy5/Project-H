@@ -358,12 +358,13 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// OLD PUBLIC ENDPOINT - NOW BLOCKED
+// FAKE ENDPOINT - MISLEADING RESPONSE
 app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 SECURITY: Attempted access to old public endpoint");
+  console.log("🚨 SECURITY: Attempted access to fake endpoint");
   res.status(404).json({ 
     error: "Not Found",
-    message: "This endpoint has been moved for security reasons"
+    message: "This endpoint does not exist",
+    data: []
   });
 });
 
