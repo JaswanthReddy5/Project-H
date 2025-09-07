@@ -361,15 +361,23 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 // SECURE Restaurant endpoint - requires API key
 app.get("/api/restaurants", async (req, res) => {
   try {
-    // Check for API key
+    // Check for API key in header or query parameter
     const apiKey = req.headers['x-api-key'] || req.query.key;
     const validApiKey = process.env.API_KEY || 'project-h-secure-key-2024';
+    
+    console.log("🔍 API Key check:", { 
+      provided: apiKey ? 'present' : 'missing', 
+      valid: apiKey === validApiKey ? 'yes' : 'no',
+      header: req.headers['x-api-key'] ? 'present' : 'missing',
+      query: req.query.key ? 'present' : 'missing'
+    });
     
     if (!apiKey || apiKey !== validApiKey) {
       console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
       return res.status(401).json({ 
         error: "Unauthorized access",
-        message: "Valid API key required"
+        message: "Valid API key required",
+        hint: "Add 'x-api-key' header with valid key"
       });
     }
     
