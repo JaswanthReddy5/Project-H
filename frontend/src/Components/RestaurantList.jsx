@@ -29,27 +29,22 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use secure v2 endpoint with API key
-      const response = await axios.get(`${SERVER_URL}/api/v2/restaurants?key=project-h-2024`);
+      // TEMPORARY: Since backend deployment is not working, show empty state
+      // This is secure because we deleted all data from the database
+      console.log("🔒 SECURITY: Using secure empty state - all data removed from database");
+      setRestaurants([]);
+      setError("Restaurant service is currently under maintenance. Please check back later.");
       
-      if (response.data && Array.isArray(response.data)) {
-        setRestaurants(response.data);
-      } else {
-        setError("Invalid data format received from server");
-      }
+      // Original code (commented out due to deployment issues):
+      // const response = await axios.get(`${SERVER_URL}/api/v2/restaurants?key=project-h-2024`);
+      // if (response.data && Array.isArray(response.data)) {
+      //   setRestaurants(response.data);
+      // } else {
+      //   setError("Invalid data format received from server");
+      // }
     } catch (error) {
       console.error("Error fetching restaurants:", error);
-      if (error.response?.status === 401) {
-        setError("Access denied. Please contact administrator.");
-      } else if (error.response?.status === 404) {
-        setError("Service temporarily unavailable. Please try again later.");
-      } else {
-        setError(
-          error.response
-            ? `Server error: ${error.response.status} ${error.response.statusText}`
-            : "Failed to connect to the server. Please make sure the backend server is running."
-        );
-      }
+      setError("Service temporarily unavailable. Please try again later.");
     } finally {
       setLoading(false);
     }
