@@ -358,14 +358,43 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// FAKE ENDPOINT - MISLEADING RESPONSE
-app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 SECURITY: Attempted access to fake endpoint");
-  res.status(404).json({ 
-    error: "Not Found",
-    message: "This endpoint does not exist",
-    data: []
-  });
+// RESTAURANT ENDPOINT - WORKING VERSION
+app.get("/api/restaurants", async (req, res) => {
+  try {
+    // Rate limiting per IP
+    const clientIP = req.ip || req.connection.remoteAddress;
+    if (!req.rateLimitStore) req.rateLimitStore = {};
+    if (!req.rateLimitStore[clientIP]) req.rateLimitStore[clientIP] = { count: 0, resetTime: Date.now() + 60000 };
+    
+    if (req.rateLimitStore[clientIP].count > 20) { // Max 20 requests per minute
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    req.rateLimitStore[clientIP].count++;
+    
+    // Get restaurants from MongoDB
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
+    
+    if (restaurants.length === 0) {
+      console.log("No restaurants found in database");
+      return res.json([]);
+    }
+
+    console.log(`✅ Found ${restaurants.length} restaurants for IP: ${clientIP}`);
+    
+    // Add security headers
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
+    });
+    
+    res.json(restaurants);
+  } catch (error) {
+    console.error("Error in /api/restaurants:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // NEW SECURE Restaurant endpoint - requires API key (hidden endpoint)
