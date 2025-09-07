@@ -42,7 +42,7 @@ app.use(cors({
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-App-Source'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-App-Source', 'X-Session-Token'],
   optionsSuccessStatus: 200
 }));
 
@@ -372,16 +372,39 @@ app.get("/api/restaurants", async (req, res) => {
       query: req.query.key ? 'present' : 'missing'
     });
     
-    // TEMPORARILY DISABLED FOR CORS FIX
-    // TODO: Re-enable after CORS is resolved
-    // if (!apiKey || apiKey !== validApiKey) {
-    //   console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
-    //   return res.status(401).json({ 
-    //     error: "Unauthorized access",
-    //     message: "Valid API key required",
-    //     hint: "Add 'x-api-key' header with valid key"
-    //   });
-    // }
+    // SECURITY: Check for valid API key
+    if (!apiKey || apiKey !== validApiKey) {
+      console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "Valid API key required"
+      });
+    }
+    
+    // Additional security: Check referer
+    const referer = req.get('Referer') || '';
+    if (!referer.includes('magnificent-kringle-05c986.netlify.app') && 
+        !referer.includes('localhost:5173') && 
+        !referer.includes('127.0.0.1')) {
+      console.log("🚨 SECURITY: Request from unauthorized referer:", referer);
+      return res.status(403).json({ 
+        error: "Forbidden",
+        message: "Access denied"
+      });
+    }
+    
+    // Additional security: Check user agent
+    const userAgent = req.get('User-Agent') || '';
+    const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'python', 'bot', 'spider', 'crawler'];
+    const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
+    
+    if (isBlockedAgent) {
+      console.log("🚨 SECURITY: Blocked suspicious user agent:", userAgent);
+      return res.status(403).json({ 
+        error: "Forbidden",
+        message: "Access denied"
+      });
+    }
     
     // Rate limiting per IP
     const clientIP = req.ip || req.connection.remoteAddress;
