@@ -358,72 +358,156 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// Restaurant routes with SECURITY and validation
-// SECURED endpoint - requires proper origin and user agent
+// SECURE Restaurant endpoint - requires session token
 app.get("/api/restaurants", async (req, res) => {
   try {
-    // Security checks
-    const userAgent = req.get('User-Agent') || '';
-    const referer = req.get('Referer') || '';
+    // Check for session token
+    const sessionToken = req.headers['x-session-token'] || req.query.token;
     
-    // TEMPORARILY DISABLED SECURITY CHECKS TO FIX CORS
-    // TODO: Re-enable after CORS is fixed
+    if (!sessionToken) {
+      console.log("🚨 SECURITY: Restaurant API accessed without session token");
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "Session token required"
+      });
+    }
     
-    // Block automated tools and suspicious requests (DISABLED)
-    // const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'python', 'bot', 'spider', 'crawler'];
-    // const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
-    // if (isBlockedAgent) {
-    //   console.log(`Blocked suspicious request from: ${userAgent}`);
-    //   return res.status(403).json({ error: "Access denied" });
-    // }
-    
-    // Require proper referer (DISABLED)
-    // if (!referer.includes('magnificent-kringle-05c986.netlify.app') && 
-    //     !referer.includes('localhost:5173') && 
-    //     !referer.includes('127.0.0.1')) {
-    //   console.log(`Blocked request without proper referer: ${referer}`);
-    //   return res.status(403).json({ error: "Access denied" });
-    // }
-    
-    // Require custom header (DISABLED)
-    // const appSource = req.get('X-App-Source');
-    // if (!appSource || appSource !== 'Project-H-Frontend') {
-    //   console.log(`Blocked request without proper X-App-Source header: ${appSource}`);
-    //   return res.status(403).json({ error: "Access denied" });
-    // }
+    // Verify session token
+    try {
+      const decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
+      
+      // Check if token is expired
+      if (decoded.exp < Date.now() / 1000) {
+        console.log("🚨 SECURITY: Expired session token used");
+        return res.status(401).json({ 
+          error: "Session expired",
+          message: "Please refresh your session"
+        });
+      }
+      
+      // Check if token has required permissions
+      if (!decoded.permissions || !decoded.permissions.includes('view_restaurants')) {
+        console.log("🚨 SECURITY: Insufficient permissions for restaurant access");
+        return res.status(403).json({ 
+          error: "Insufficient permissions",
+          message: "Access denied"
+        });
+      }
+      
+    } catch (jwtError) {
+      console.log("🚨 SECURITY: Invalid session token:", jwtError.message);
+      return res.status(401).json({ 
+        error: "Invalid session",
+        message: "Please login again"
+      });
+    }
     
     // Rate limiting per IP
     const clientIP = req.ip || req.connection.remoteAddress;
     if (!req.rateLimitStore) req.rateLimitStore = {};
     if (!req.rateLimitStore[clientIP]) req.rateLimitStore[clientIP] = { count: 0, resetTime: Date.now() + 60000 };
     
-    if (req.rateLimitStore[clientIP].count > 10) { // Max 10 requests per minute
+    if (req.rateLimitStore[clientIP].count > 20) { // Max 20 requests per minute for authenticated users
       console.log(`Rate limit exceeded for IP: ${clientIP}`);
       return res.status(429).json({ error: "Too many requests" });
     }
     req.rateLimitStore[clientIP].count++;
     
-    // Get restaurants from MongoDB only - no more hardcoded sample data
-    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy'); // Remove version field and creator info
+    // Get restaurants from MongoDB
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
     
     if (restaurants.length === 0) {
       console.log("No restaurants found in database");
       return res.json([]);
     }
 
-    console.log(`Found ${restaurants.length} restaurants in database for IP: ${clientIP}`);
+    console.log(`✅ SECURE: Found ${restaurants.length} restaurants for authenticated user`);
     
     // Add security headers
     res.set({
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
-      'Cache-Control': 'private, max-age=300' // Cache for 5 minutes only
+      'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
     
     res.json(restaurants);
   } catch (error) {
     console.error("Error in /api/restaurants:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Generate session token endpoint
+app.post("/api/session/token", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password required" });
+    }
+    
+    // Check for default admin user
+    if (username === 'admin' && password === 'admin123') {
+      // Generate session token for default admin
+      const sessionToken = jwt.sign(
+        {
+          userId: 'admin',
+          username: 'admin',
+          permissions: ['view_restaurants', 'view_menu'],
+          sessionId: Date.now().toString()
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      
+      console.log(`✅ Session token generated for default admin user`);
+      
+      return res.json({
+        success: true,
+        sessionToken,
+        expiresIn: '24h',
+        permissions: ['view_restaurants', 'view_menu']
+      });
+    }
+    
+    // Find user in database
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    // Generate session token with permissions
+    const sessionToken = jwt.sign(
+      {
+        userId: user._id,
+        username: user.username,
+        permissions: ['view_restaurants', 'view_menu'],
+        sessionId: Date.now().toString()
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    console.log(`✅ Session token generated for user: ${username}`);
+    
+    res.json({
+      success: true,
+      sessionToken,
+      expiresIn: '24h',
+      permissions: ['view_restaurants', 'view_menu']
+    });
+    
+  } catch (error) {
+    console.error("Error generating session token:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
