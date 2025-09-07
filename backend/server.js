@@ -42,7 +42,7 @@ app.use(cors({
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-App-Source'],
   optionsSuccessStatus: 200
 }));
 
@@ -375,16 +375,16 @@ app.get("/api/restaurants", async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
     
-    // Require referer to be from your domain
-    if (!referer.includes('magnificent-kringle-05c986.netlify.app')) {
+    // Require referer to be from your domain (allow empty referer for direct browser access)
+    if (referer && !referer.includes('magnificent-kringle-05c986.netlify.app')) {
       console.log(`Blocked request from referer: ${referer}`);
       return res.status(403).json({ error: "Access denied" });
     }
     
-    // Require custom header to prevent direct API access
+    // Require custom header to prevent direct API access (optional for now)
     const customHeader = req.get('X-App-Source') || '';
-    if (customHeader !== 'project-h-frontend') {
-      console.log(`Blocked request missing custom header: ${customHeader}`);
+    if (customHeader && customHeader !== 'project-h-frontend') {
+      console.log(`Blocked request with invalid custom header: ${customHeader}`);
       return res.status(403).json({ error: "Access denied" });
     }
     
