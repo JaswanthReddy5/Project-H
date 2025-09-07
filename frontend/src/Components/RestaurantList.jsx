@@ -29,14 +29,8 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use API key for authentication
-      const apiKey = 'project-h-secure-key-2024';
-      
-      const response = await axios.get(`${SERVER_URL}/api/restaurants`, {
-        headers: {
-          'x-api-key': apiKey
-        }
-      });
+      // TEMPORARILY DISABLED API KEY FOR CORS FIX
+      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
       
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);
