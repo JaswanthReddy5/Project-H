@@ -27,11 +27,7 @@ export const RestaurantList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${SERVER_URL}/api/restaurants`, {
-        headers: {
-          'X-App-Source': 'Project-H-Frontend'
-        }
-      });
+      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);
       } else {

@@ -366,29 +366,31 @@ app.get("/api/restaurants", async (req, res) => {
     const userAgent = req.get('User-Agent') || '';
     const referer = req.get('Referer') || '';
     
-    // Block automated tools and suspicious requests
-    const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'python', 'bot', 'spider', 'crawler'];
-    const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
+    // TEMPORARILY DISABLED SECURITY CHECKS TO FIX CORS
+    // TODO: Re-enable after CORS is fixed
     
-    if (isBlockedAgent) {
-      console.log(`Blocked suspicious request from: ${userAgent}`);
-      return res.status(403).json({ error: "Access denied" });
-    }
+    // Block automated tools and suspicious requests (DISABLED)
+    // const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'python', 'bot', 'spider', 'crawler'];
+    // const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
+    // if (isBlockedAgent) {
+    //   console.log(`Blocked suspicious request from: ${userAgent}`);
+    //   return res.status(403).json({ error: "Access denied" });
+    // }
     
-    // Require proper referer (must come from your website)
-    if (!referer.includes('magnificent-kringle-05c986.netlify.app') && 
-        !referer.includes('localhost:5173') && 
-        !referer.includes('127.0.0.1')) {
-      console.log(`Blocked request without proper referer: ${referer}`);
-      return res.status(403).json({ error: "Access denied" });
-    }
+    // Require proper referer (DISABLED)
+    // if (!referer.includes('magnificent-kringle-05c986.netlify.app') && 
+    //     !referer.includes('localhost:5173') && 
+    //     !referer.includes('127.0.0.1')) {
+    //   console.log(`Blocked request without proper referer: ${referer}`);
+    //   return res.status(403).json({ error: "Access denied" });
+    // }
     
-    // Require custom header for additional security
-    const appSource = req.get('X-App-Source');
-    if (!appSource || appSource !== 'Project-H-Frontend') {
-      console.log(`Blocked request without proper X-App-Source header: ${appSource}`);
-      return res.status(403).json({ error: "Access denied" });
-    }
+    // Require custom header (DISABLED)
+    // const appSource = req.get('X-App-Source');
+    // if (!appSource || appSource !== 'Project-H-Frontend') {
+    //   console.log(`Blocked request without proper X-App-Source header: ${appSource}`);
+    //   return res.status(403).json({ error: "Access denied" });
+    // }
     
     // Rate limiting per IP
     const clientIP = req.ip || req.connection.remoteAddress;
