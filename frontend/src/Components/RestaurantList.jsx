@@ -32,7 +32,7 @@ export const RestaurantList = () => {
       // Use API key for authentication
       const apiKey = 'project-h-secure-key-2024';
       
-      const response = await axios.get(`${SERVER_URL}/api/restaurants`, {
+      const response = await axios.get(`${SERVER_URL}/api/v2/data/restaurants`, {
         headers: {
           'x-api-key': apiKey
         }

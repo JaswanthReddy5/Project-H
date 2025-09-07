@@ -358,8 +358,17 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// SECURE Restaurant endpoint - requires API key
-app.get("/api/restaurants", async (req, res) => {
+// OLD PUBLIC ENDPOINT - NOW BLOCKED
+app.get("/api/restaurants", (req, res) => {
+  console.log("🚨 SECURITY: Attempted access to old public endpoint");
+  res.status(404).json({ 
+    error: "Not Found",
+    message: "This endpoint has been moved for security reasons"
+  });
+});
+
+// NEW SECURE Restaurant endpoint - requires API key (hidden endpoint)
+app.get("/api/v2/data/restaurants", async (req, res) => {
   try {
     // Check for API key in header or query parameter
     const apiKey = req.headers['x-api-key'] || req.query.key;
