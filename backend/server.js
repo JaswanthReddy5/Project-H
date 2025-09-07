@@ -67,17 +67,7 @@ app.use('/api', apiRateLimit);
 // Routes with security middleware
 app.use('/api/auth', authRoutes);
 
-// Global authentication middleware for protected routes
-app.use('/api/restaurants', (req, res, next) => {
-  console.log(`Restaurant middleware: ${req.method} ${req.path}`);
-  // Skip authentication for GET requests (public)
-  if (req.method === 'GET') {
-    return next();
-  }
-  // Require authentication for POST, PUT, DELETE
-  console.log('Requiring authentication for:', req.method);
-  return auth(req, res, next);
-});
+// REMOVED: Conflicting middleware that was bypassing security
 
 // Serve static files from the 'public' directory
 app.use('/public', express.static(path.join(__dirname, 'public')));
