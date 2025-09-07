@@ -33,17 +33,7 @@ export const RestaurantList = () => {
       const response = await axios.get(`${SERVER_URL}/api/restaurants`);
       
       if (response.data && Array.isArray(response.data)) {
-        // Decode obfuscated data
-        const decodedRestaurants = response.data.map(restaurant => ({
-          ...restaurant,
-          // Decode menu URLs
-          menuUrl: restaurant.menuUrl ? 
-            Buffer.from(restaurant.menuUrl, 'base64').toString('utf-8') : 
-            restaurant.menuUrl,
-          // Remove security metadata
-          _security: undefined
-        }));
-        setRestaurants(decodedRestaurants);
+        setRestaurants(response.data);
       } else {
         setError("Invalid data format received from server");
       }

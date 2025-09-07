@@ -382,35 +382,15 @@ app.get("/api/restaurants", async (req, res) => {
 
     console.log(`✅ Found ${restaurants.length} restaurants for IP: ${clientIP}`);
     
-    // Obfuscate sensitive data for security
-    const obfuscatedRestaurants = restaurants.map(restaurant => ({
-      ...restaurant.toObject(),
-      // Obfuscate phone numbers - only show last 4 digits
-      phoneNumber: restaurant.phoneNumber ? 
-        '****' + restaurant.phoneNumber.slice(-4) : 
-        'Not available',
-      // Obfuscate menu URLs - encode them
-      menuUrl: restaurant.menuUrl ? 
-        Buffer.from(restaurant.menuUrl).toString('base64') : 
-        null,
-      // Add security metadata
-      _security: {
-        timestamp: Date.now(),
-        version: '2.0',
-        obfuscated: true
-      }
-    }));
-    
     // Add security headers
     res.set({
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
-      'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
-      'X-Data-Status': 'obfuscated'
+      'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
     });
     
-    res.json(obfuscatedRestaurants);
+    res.json(restaurants);
   } catch (error) {
     console.error("Error in /api/restaurants:", error);
     res.status(500).json({ error: "Internal server error" });
