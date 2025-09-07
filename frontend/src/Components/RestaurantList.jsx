@@ -41,6 +41,8 @@ export const RestaurantList = () => {
       console.error("Error fetching restaurants:", error);
       if (error.response?.status === 401) {
         setError("Access denied. Please contact administrator.");
+      } else if (error.response?.status === 404) {
+        setError("Service temporarily unavailable. Please try again later.");
       } else {
         setError(
           error.response
