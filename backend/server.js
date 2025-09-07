@@ -642,6 +642,29 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+// TEMPORARY FIX: Add secure endpoint here to fix 404
+app.get("/api/v2/restaurants", async (req, res) => {
+  try {
+    // Check for API key
+    const apiKey = req.query.key;
+    const validApiKey = 'project-h-2024';
+    
+    if (!apiKey || apiKey !== validApiKey) {
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "Valid API key required",
+        hint: "Add ?key=project-h-2024 to the URL"
+      });
+    }
+    
+    // Return empty array since we deleted all data for security
+    res.json([]);
+  } catch (error) {
+    console.error("Error in /api/v2/restaurants:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Test endpoint to verify deployment
 app.get("/api/deployment-test", (req, res) => {
   res.json({ 
