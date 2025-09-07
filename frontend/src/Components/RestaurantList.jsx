@@ -29,8 +29,8 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use current working endpoint (backend deployment is broken)
-      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
+      // Use secure endpoint with API key
+      const response = await axios.get(`${SERVER_URL}/api/restaurants?key=project-h-2024`);
       
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);
@@ -39,7 +39,7 @@ export const RestaurantList = () => {
       }
     } catch (error) {
       console.error("Error fetching restaurants:", error);
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
         setError("Access denied. Please contact administrator.");
       } else if (error.response?.status === 404) {
         setError("Service temporarily unavailable. Please try again later.");
