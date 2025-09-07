@@ -358,13 +358,13 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// FAKE PUBLIC ENDPOINT - MISLEADING RESPONSE
+// BLOCKED PUBLIC ENDPOINT - NO DATA EXPOSED
 app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 SECURITY: Attempted access to fake public endpoint");
-  res.status(404).json({ 
-    error: "Not Found",
-    message: "This endpoint has been moved for security reasons",
-    data: []
+  console.log("🚨 SECURITY: Blocked unauthorized access to restaurant data");
+  res.status(403).json({ 
+    error: "Forbidden",
+    message: "Access denied",
+    data: null
   });
 });
 
