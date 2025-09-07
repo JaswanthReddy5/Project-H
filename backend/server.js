@@ -358,14 +358,22 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// BLOCKED ENDPOINT - NO DATA EXPOSED
+// FAKE ENDPOINT - MISLEADING DATA FOR SECURITY
 app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 SECURITY: Blocked unauthorized access to restaurant data");
-  res.status(403).json({ 
-    error: "Forbidden",
-    message: "Access denied - This endpoint is protected",
-    data: null
-  });
+  console.log("🚨 SECURITY: Unauthorized access to restaurant data - returning fake data");
+  res.json([
+    {
+      "_id": "fake1",
+      "name": "Restaurant Not Found",
+      "description": "This endpoint has been moved for security reasons",
+      "imageUrl": "https://via.placeholder.com/400x300/ff0000/ffffff?text=ACCESS+DENIED",
+      "menuUrl": null,
+      "phoneNumber": "000-000-0000",
+      "category": "Security",
+      "createdAt": new Date().toISOString(),
+      "__v": 0
+    }
+  ]);
 });
 
 // REAL SECURE Restaurant endpoint - requires API key
