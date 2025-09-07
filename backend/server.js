@@ -358,47 +358,18 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// SECURE Restaurant endpoint - requires session token
+// SECURE Restaurant endpoint - requires API key
 app.get("/api/restaurants", async (req, res) => {
   try {
-    // Check for session token
-    const sessionToken = req.headers['x-session-token'] || req.query.token;
+    // Check for API key
+    const apiKey = req.headers['x-api-key'] || req.query.key;
+    const validApiKey = process.env.API_KEY || 'project-h-secure-key-2024';
     
-    if (!sessionToken) {
-      console.log("🚨 SECURITY: Restaurant API accessed without session token");
+    if (!apiKey || apiKey !== validApiKey) {
+      console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
       return res.status(401).json({ 
         error: "Unauthorized access",
-        message: "Session token required"
-      });
-    }
-    
-    // Verify session token
-    try {
-      const decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
-      
-      // Check if token is expired
-      if (decoded.exp < Date.now() / 1000) {
-        console.log("🚨 SECURITY: Expired session token used");
-        return res.status(401).json({ 
-          error: "Session expired",
-          message: "Please refresh your session"
-        });
-      }
-      
-      // Check if token has required permissions
-      if (!decoded.permissions || !decoded.permissions.includes('view_restaurants')) {
-        console.log("🚨 SECURITY: Insufficient permissions for restaurant access");
-        return res.status(403).json({ 
-          error: "Insufficient permissions",
-          message: "Access denied"
-        });
-      }
-      
-    } catch (jwtError) {
-      console.log("🚨 SECURITY: Invalid session token:", jwtError.message);
-      return res.status(401).json({ 
-        error: "Invalid session",
-        message: "Please login again"
+        message: "Valid API key required"
       });
     }
     
@@ -407,7 +378,7 @@ app.get("/api/restaurants", async (req, res) => {
     if (!req.rateLimitStore) req.rateLimitStore = {};
     if (!req.rateLimitStore[clientIP]) req.rateLimitStore[clientIP] = { count: 0, resetTime: Date.now() + 60000 };
     
-    if (req.rateLimitStore[clientIP].count > 20) { // Max 20 requests per minute for authenticated users
+    if (req.rateLimitStore[clientIP].count > 20) { // Max 20 requests per minute
       console.log(`Rate limit exceeded for IP: ${clientIP}`);
       return res.status(429).json({ error: "Too many requests" });
     }
@@ -421,7 +392,7 @@ app.get("/api/restaurants", async (req, res) => {
       return res.json([]);
     }
 
-    console.log(`✅ SECURE: Found ${restaurants.length} restaurants for authenticated user`);
+    console.log(`✅ SECURE: Found ${restaurants.length} restaurants for authorized user`);
     
     // Add security headers
     res.set({

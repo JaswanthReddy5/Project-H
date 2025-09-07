@@ -24,51 +24,17 @@ export const RestaurantList = () => {
   const [hasAddedSampleData, setHasAddedSampleData] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState(null);
 
-  // Get session token
-  const getSessionToken = async () => {
-    try {
-      // Try to get token from localStorage first
-      const storedToken = localStorage.getItem('sessionToken');
-      if (storedToken) {
-        setSessionToken(storedToken);
-        return storedToken;
-      }
-      
-      // If no stored token, try to get one with default credentials
-      // This is a temporary solution - in production, users should login
-      const response = await axios.post(`${SERVER_URL}/api/session/token`, {
-        username: 'admin', // Default admin user
-        password: 'admin123' // Default password
-      });
-      
-      if (response.data.sessionToken) {
-        const token = response.data.sessionToken;
-        localStorage.setItem('sessionToken', token);
-        setSessionToken(token);
-        return token;
-      }
-    } catch (error) {
-      console.error("Error getting session token:", error);
-      setError("Authentication failed. Please contact administrator.");
-      return null;
-    }
-  };
-
   const fetchRestaurants = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Get session token
-      const token = await getSessionToken();
-      if (!token) {
-        setError("Unable to authenticate. Please contact administrator.");
-        return;
-      }
+      // Use API key for authentication
+      const apiKey = 'project-h-secure-key-2024';
       
       const response = await axios.get(`${SERVER_URL}/api/restaurants`, {
         headers: {
-          'x-session-token': token
+          'x-api-key': apiKey
         }
       });
       
@@ -80,10 +46,7 @@ export const RestaurantList = () => {
     } catch (error) {
       console.error("Error fetching restaurants:", error);
       if (error.response?.status === 401) {
-        // Token expired or invalid, clear it and retry
-        localStorage.removeItem('sessionToken');
-        setSessionToken(null);
-        setError("Session expired. Please refresh the page.");
+        setError("Access denied. Please contact administrator.");
       } else {
         setError(
           error.response
