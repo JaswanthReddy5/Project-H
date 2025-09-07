@@ -358,18 +358,34 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// RESTAURANT ENDPOINT - WORKING VERSION WITH BASIC SECURITY
-app.get("/api/restaurants", async (req, res) => {
+// FAKE PUBLIC ENDPOINT - MISLEADING RESPONSE
+app.get("/api/restaurants", (req, res) => {
+  console.log("🚨 SECURITY: Attempted access to fake public endpoint");
+  res.status(404).json({ 
+    error: "Not Found",
+    message: "This endpoint has been moved for security reasons",
+    data: []
+  });
+});
+
+// REAL SECURE Restaurant endpoint - requires API key
+app.get("/api/v2/restaurants", async (req, res) => {
   try {
-    // Basic security: Check for simple API key in query parameter
+    // STRICT SECURITY: Check for API key in query parameter
     const apiKey = req.query.key;
     const validApiKey = 'project-h-2024';
+    
+    console.log("🔍 API Key check:", { 
+      provided: apiKey ? 'present' : 'missing', 
+      valid: apiKey === validApiKey ? 'yes' : 'no'
+    });
     
     if (!apiKey || apiKey !== validApiKey) {
       console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
       return res.status(401).json({ 
         error: "Unauthorized access",
-        message: "API key required"
+        message: "Valid API key required",
+        hint: "Add ?key=project-h-2024 to the URL"
       });
     }
     
