@@ -27,7 +27,7 @@ const {
 const app = express();
 
 // CRITICAL SECURITY UPDATE - FORCE DEPLOYMENT
-console.log("🔒 SECURITY: Server starting with critical security updates - v3.0 - FORCE DEPLOY");
+console.log("🔒 SECURITY: Server starting with critical security updates - v4.0 - SECURITY FIX");
 
 // Security middleware (order matters!)
 app.use(securityHeaders);
@@ -474,15 +474,14 @@ app.get("/api/v2/data/restaurants", async (req, res) => {
       query: req.query.key ? 'present' : 'missing'
     });
     
-    // TEMPORARILY DISABLED FOR CORS FIX
-    // SECURITY: Check for valid API key (DISABLED)
-    // if (!apiKey || apiKey !== validApiKey) {
-    //   console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
-    //   return res.status(401).json({ 
-    //     error: "Unauthorized access",
-    //     message: "Valid API key required"
-    //   });
-    // }
+    // SECURITY: Check for valid API key (ENABLED)
+    if (!apiKey || apiKey !== validApiKey) {
+      console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "Valid API key required"
+      });
+    }
     
     // TEMPORARILY DISABLED FOR CORS FIX
     // Additional security: Check referer (DISABLED)
@@ -672,28 +671,7 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-// TEMPORARY FIX: Add secure endpoint here to fix 404
-app.get("/api/v2/restaurants", async (req, res) => {
-  try {
-    // Check for API key
-    const apiKey = req.query.key;
-    const validApiKey = 'project-h-2024';
-    
-    if (!apiKey || apiKey !== validApiKey) {
-      return res.status(401).json({ 
-        error: "Unauthorized access",
-        message: "Valid API key required",
-        hint: "Add ?key=project-h-2024 to the URL"
-      });
-    }
-    
-    // Return empty array since we deleted all data for security
-    res.json([]);
-  } catch (error) {
-    console.error("Error in /api/v2/restaurants:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+// REMOVED: Duplicate endpoint causing confusion
 
 // Test endpoint to verify deployment
 app.get("/api/deployment-test", (req, res) => {
