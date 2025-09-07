@@ -362,15 +362,45 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// COMPLETELY BLOCKED ENDPOINT
-app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 CRITICAL SECURITY: Blocking all access to restaurant data");
-  res.status(403).json({
-    error: "Forbidden",
-    message: "This endpoint has been permanently disabled for security reasons",
-    code: "ENDPOINT_DISABLED",
-    timestamp: new Date().toISOString()
-  });
+// SECURE Restaurant endpoint - requires API key
+app.get("/api/restaurants", async (req, res) => {
+  try {
+    // SECURITY: Check for API key in query parameter
+    const apiKey = req.query.key;
+    const validApiKey = 'project-h-2024';
+    
+    if (!apiKey || apiKey !== validApiKey) {
+      console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "Valid API key required",
+        hint: "Add ?key=project-h-2024 to the URL"
+      });
+    }
+    
+    // Get restaurants from MongoDB
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
+    
+    if (restaurants.length === 0) {
+      console.log("No restaurants found in database");
+      return res.json([]);
+    }
+
+    console.log(`✅ Found ${restaurants.length} restaurants for authorized user`);
+    
+    // Add security headers
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Cache-Control': 'private, max-age=300'
+    });
+    
+    res.json(restaurants);
+  } catch (error) {
+    console.error("Error in /api/restaurants:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // REAL SECURE Restaurant endpoint - requires API key
