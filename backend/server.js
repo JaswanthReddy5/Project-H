@@ -358,9 +358,21 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// RESTAURANT ENDPOINT - WORKING VERSION
+// RESTAURANT ENDPOINT - WORKING VERSION WITH BASIC SECURITY
 app.get("/api/restaurants", async (req, res) => {
   try {
+    // Basic security: Check for simple API key in query parameter
+    const apiKey = req.query.key;
+    const validApiKey = 'project-h-2024';
+    
+    if (!apiKey || apiKey !== validApiKey) {
+      console.log("🚨 SECURITY: Restaurant API accessed without valid API key");
+      return res.status(401).json({ 
+        error: "Unauthorized access",
+        message: "API key required"
+      });
+    }
+    
     // Rate limiting per IP
     const clientIP = req.ip || req.connection.remoteAddress;
     if (!req.rateLimitStore) req.rateLimitStore = {};
