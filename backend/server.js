@@ -359,9 +359,35 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 });
 
 // Restaurant routes with SECURITY and validation
-// PUBLIC endpoint - no authentication required for viewing restaurants
+// PROTECTED endpoint - requires valid origin and user agent
 app.get("/api/restaurants", async (req, res) => {
   try {
+    // Additional security checks
+    const userAgent = req.get('User-Agent') || '';
+    const referer = req.get('Referer') || '';
+    
+    // Block requests from common API testing tools
+    const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'httpie', 'python-requests'];
+    const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
+    
+    if (isBlockedAgent) {
+      console.log(`Blocked request from: ${userAgent}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    // Require referer to be from your domain
+    if (!referer.includes('magnificent-kringle-05c986.netlify.app')) {
+      console.log(`Blocked request from referer: ${referer}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    // Require custom header to prevent direct API access
+    const customHeader = req.get('X-App-Source') || '';
+    if (customHeader !== 'project-h-frontend') {
+      console.log(`Blocked request missing custom header: ${customHeader}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
     // Get restaurants from MongoDB only - no more hardcoded sample data
     const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy'); // Remove version field and creator info
     
