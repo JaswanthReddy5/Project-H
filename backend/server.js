@@ -26,6 +26,9 @@ const {
 
 const app = express();
 
+// CRITICAL SECURITY UPDATE - FORCE DEPLOYMENT
+console.log("🔒 SECURITY: Server starting with critical security updates");
+
 // Security middleware (order matters!)
 app.use(securityHeaders);
 app.use(requestSizeLimit);
