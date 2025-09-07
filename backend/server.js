@@ -359,9 +359,48 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
 });
 
 // Restaurant routes with SECURITY and validation
-// PUBLIC endpoint - temporarily disabled security checks to fix CORS
+// SECURED endpoint - requires proper origin and user agent
 app.get("/api/restaurants", async (req, res) => {
   try {
+    // Security checks
+    const userAgent = req.get('User-Agent') || '';
+    const referer = req.get('Referer') || '';
+    
+    // Block automated tools and suspicious requests
+    const blockedAgents = ['curl', 'wget', 'postman', 'insomnia', 'python', 'bot', 'spider', 'crawler'];
+    const isBlockedAgent = blockedAgents.some(agent => userAgent.toLowerCase().includes(agent));
+    
+    if (isBlockedAgent) {
+      console.log(`Blocked suspicious request from: ${userAgent}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    // Require proper referer (must come from your website)
+    if (!referer.includes('magnificent-kringle-05c986.netlify.app') && 
+        !referer.includes('localhost:5173') && 
+        !referer.includes('127.0.0.1')) {
+      console.log(`Blocked request without proper referer: ${referer}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    // Require custom header for additional security
+    const appSource = req.get('X-App-Source');
+    if (!appSource || appSource !== 'Project-H-Frontend') {
+      console.log(`Blocked request without proper X-App-Source header: ${appSource}`);
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    // Rate limiting per IP
+    const clientIP = req.ip || req.connection.remoteAddress;
+    if (!req.rateLimitStore) req.rateLimitStore = {};
+    if (!req.rateLimitStore[clientIP]) req.rateLimitStore[clientIP] = { count: 0, resetTime: Date.now() + 60000 };
+    
+    if (req.rateLimitStore[clientIP].count > 10) { // Max 10 requests per minute
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    req.rateLimitStore[clientIP].count++;
+    
     // Get restaurants from MongoDB only - no more hardcoded sample data
     const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy'); // Remove version field and creator info
     
@@ -370,7 +409,16 @@ app.get("/api/restaurants", async (req, res) => {
       return res.json([]);
     }
 
-    console.log(`Found ${restaurants.length} restaurants in database`);
+    console.log(`Found ${restaurants.length} restaurants in database for IP: ${clientIP}`);
+    
+    // Add security headers
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Cache-Control': 'private, max-age=300' // Cache for 5 minutes only
+    });
+    
     res.json(restaurants);
   } catch (error) {
     console.error("Error in /api/restaurants:", error);
