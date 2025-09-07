@@ -29,8 +29,8 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use regular endpoint (security temporarily disabled for testing)
-      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
+      // Use alternative endpoint (main one is blocked by deployment issues)
+      const response = await axios.get(`${SERVER_URL}/api/food`);
       
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);

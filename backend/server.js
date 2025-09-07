@@ -74,6 +74,28 @@ app.get("/api/restaurants", async (req, res) => {
   }
 });
 
+// ALTERNATIVE ENDPOINT - IN CASE MAIN ONE IS BLOCKED
+app.get("/api/food", async (req, res) => {
+  try {
+    console.log("🍽️ ALTERNATIVE: Serving restaurants from /api/food");
+    
+    // Get restaurants from MongoDB
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
+    
+    if (restaurants.length === 0) {
+      console.log("No restaurants found in database");
+      return res.json([]);
+    }
+
+    console.log(`✅ Found ${restaurants.length} restaurants via /api/food`);
+    
+    res.json(restaurants);
+  } catch (error) {
+    console.error("Error in /api/food:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Apply rate limiting to routes
 app.use('/api/auth', authRateLimit);
 app.use('/api', apiRateLimit);
