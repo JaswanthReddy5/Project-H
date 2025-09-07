@@ -29,8 +29,8 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use secure endpoint with API key
-      const response = await axios.get(`${SERVER_URL}/api/restaurants?key=project-h-2024`);
+      // Use regular endpoint (security temporarily disabled for testing)
+      const response = await axios.get(`${SERVER_URL}/api/restaurants`);
       
       if (response.data && Array.isArray(response.data)) {
         setRestaurants(response.data);
