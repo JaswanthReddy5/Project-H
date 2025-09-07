@@ -27,7 +27,7 @@ const {
 const app = express();
 
 // CRITICAL SECURITY UPDATE - FORCE DEPLOYMENT
-console.log("🔒 SECURITY: Server starting with critical security updates");
+console.log("🔒 SECURITY: Server starting with critical security updates - v2.0");
 
 // Security middleware (order matters!)
 app.use(securityHeaders);
@@ -638,7 +638,16 @@ app.get("/api/test", (req, res) => {
   res.json({ 
     message: "Server is running!",
     timestamp: new Date().toISOString(),
-    version: "1.0.0"
+    version: "2.0 - Security Update"
+  });
+});
+
+// Test endpoint to verify deployment
+app.get("/api/deployment-test", (req, res) => {
+  res.json({ 
+    message: "Deployment test successful!",
+    timestamp: new Date().toISOString(),
+    status: "deployed"
   });
 });
 
