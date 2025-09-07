@@ -46,6 +46,17 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
+// CRITICAL SECURITY: Block old endpoint immediately
+app.use('/api/restaurants', (req, res, next) => {
+  console.log("🚨 CRITICAL SECURITY: Blocking access to old restaurant endpoint");
+  return res.status(403).json({
+    error: "Forbidden",
+    message: "This endpoint has been permanently disabled for security reasons",
+    code: "ENDPOINT_DISABLED",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Apply rate limiting to routes
 app.use('/api/auth', authRateLimit);
 app.use('/api', apiRateLimit);
@@ -358,22 +369,15 @@ app.post("/api/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// FAKE ENDPOINT - MISLEADING DATA FOR SECURITY
+// COMPLETELY BLOCKED ENDPOINT
 app.get("/api/restaurants", (req, res) => {
-  console.log("🚨 SECURITY: Unauthorized access to restaurant data - returning fake data");
-  res.json([
-    {
-      "_id": "fake1",
-      "name": "Restaurant Not Found",
-      "description": "This endpoint has been moved for security reasons",
-      "imageUrl": "https://via.placeholder.com/400x300/ff0000/ffffff?text=ACCESS+DENIED",
-      "menuUrl": null,
-      "phoneNumber": "000-000-0000",
-      "category": "Security",
-      "createdAt": new Date().toISOString(),
-      "__v": 0
-    }
-  ]);
+  console.log("🚨 CRITICAL SECURITY: Blocking all access to restaurant data");
+  res.status(403).json({
+    error: "Forbidden",
+    message: "This endpoint has been permanently disabled for security reasons",
+    code: "ENDPOINT_DISABLED",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // REAL SECURE Restaurant endpoint - requires API key
