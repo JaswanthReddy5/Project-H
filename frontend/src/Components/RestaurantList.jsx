@@ -29,23 +29,62 @@ export const RestaurantList = () => {
       setLoading(true);
       setError(null);
       
-      // Use alternative endpoint (main one is blocked by deployment issues)
-      const response = await axios.get(`${SERVER_URL}/api/food`);
+      // WORKING SOLUTION: Show sample restaurants since backend deployment is broken
+      console.log("🔧 WORKING: Using sample data due to backend deployment issues");
       
-      if (response.data && Array.isArray(response.data)) {
-        setRestaurants(response.data);
-      } else {
-        setError("Invalid data format received from server");
-      }
+      const sampleRestaurants = [
+        {
+          _id: "sample1",
+          name: "Andra Tiffins&Snakes",
+          description: "Authentic Hyderabadi Biryani and Indian cuisine",
+          imageUrl: "https://drive.google.com/thumbnail?id=1uH2xPK0n2DE1jIxH3cr9ML_CM0LjovLw",
+          menuUrl: "https://drive.google.com/file/d/1hkMRslqFPQ76LrfJ4UNvfErongZ6_ZH3/view?usp=sharing",
+          phoneNumber: "9059937090",
+          category: "Indian"
+        },
+        {
+          _id: "sample2",
+          name: "Butty",
+          description: "Authentic Chinese cuisine",
+          imageUrl: "https://drive.google.com/thumbnail?id=1yqr0YzQEa_ZEvS_K9qDPpoR-dgsjZJ3P",
+          menuUrl: "https://drive.google.com/file/d/1h0JKN3MjiK0jGc9mjusumERr-JT1dh3p/view",
+          phoneNumber: "7200318905",
+          category: "Chinese"
+        },
+        {
+          _id: "sample3",
+          name: "Sunny Days",
+          description: "Authentic Hyderabadi Biryani and Indian cuisine",
+          imageUrl: "https://drive.google.com/thumbnail?id=1yd1V_jk-XHlISUutbsTmRHaO-Jt4lU7A",
+          menuUrl: "https://drive.google.com/file/d/1hG9vdTpduY-CYbWtJgu2pAMwhdQCAPiU/view?usp=sharing",
+          phoneNumber: "9381878144",
+          category: "Indian"
+        },
+        {
+          _id: "sample4",
+          name: "Zinger",
+          description: "Famous Hyderabadi biryani with authentic taste",
+          imageUrl: "https://drive.google.com/thumbnail?id=1lQt315Y24SpUpnUdCRdvlIb-3Q2qW_ph",
+          menuUrl: "https://drive.google.com/file/d/1-6Fe48xkumNYYf3oTzo8BWmFGk4CDVnf/view?usp=sharing",
+          category: "Indian"
+        },
+        {
+          _id: "sample5",
+          name: "Shakes and Desserts",
+          description: "Famous Hyderabadi biryani with authentic taste",
+          imageUrl: "https://drive.google.com/thumbnail?id=1-F1AM50T7WFuam-5hdhJn30HJJkTg1RV",
+          menuUrl: "https://drive.google.com/file/d/1-VcH6ja7-yw4_1AP0aF69GIcjVsNEup1/view?usp=sharing",
+          phoneNumber: "9876543210",
+          category: "Indian"
+        }
+      ];
+      
+      setRestaurants(sampleRestaurants);
+      setError("Note: Using sample data due to backend deployment issues. Full functionality will be restored soon.");
+      
     } catch (error) {
       console.error("Error fetching restaurants:", error);
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        setError("Access denied. Please contact administrator.");
-      } else if (error.response?.status === 404) {
-        setError("Service temporarily unavailable. Please try again later.");
-      } else {
-        setError("Failed to fetch restaurants. Please try again later.");
-      }
+      setError("Failed to fetch restaurants. Please try again later.");
     } finally {
       setLoading(false);
     }
