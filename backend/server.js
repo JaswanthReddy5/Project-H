@@ -52,19 +52,10 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// NEW WORKING ENDPOINT - BYPASS ALL BLOCKING
+// Restaurant endpoint
 app.get("/api/restaurants", async (req, res) => {
   try {
-    console.log("🍽️ WORKING: Serving restaurants from new endpoint");
-    
-    // Get restaurants from MongoDB (check both isActive and all restaurants)
-    let restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
-    
-    // If no active restaurants found, get all restaurants
-    if (restaurants.length === 0) {
-      console.log("No active restaurants found, getting all restaurants");
-      restaurants = await Restaurant.find({}).select('-__v -createdBy');
-    }
+    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
     
     if (restaurants.length === 0) {
       console.log("No restaurants found in database");
@@ -76,28 +67,6 @@ app.get("/api/restaurants", async (req, res) => {
     res.json(restaurants);
   } catch (error) {
     console.error("Error in /api/restaurants:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ALTERNATIVE ENDPOINT - IN CASE MAIN ONE IS BLOCKED
-app.get("/api/food", async (req, res) => {
-  try {
-    console.log("🍽️ ALTERNATIVE: Serving restaurants from /api/food");
-    
-    // Get restaurants from MongoDB
-    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
-    
-    if (restaurants.length === 0) {
-      console.log("No restaurants found in database");
-      return res.json([]);
-    }
-
-    console.log(`✅ Found ${restaurants.length} restaurants via /api/food`);
-    
-    res.json(restaurants);
-  } catch (error) {
-    console.error("Error in /api/food:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
