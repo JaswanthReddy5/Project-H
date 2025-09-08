@@ -30,7 +30,7 @@ const app = express();
 console.log("🔄 FORCING RESTART - MAJOR CHANGE TO TRIGGER DEPLOYMENT");
 
 // CRITICAL SECURITY UPDATE - FORCE DEPLOYMENT
-console.log("🔒 SECURITY: Server starting with critical security updates - v5.0 - WORKING FIX");
+console.log("🔒 SECURITY: Server starting with critical security updates - v6.0 - RESTAURANTS FIXED");
 
 // Security middleware (order matters!)
 app.use(securityHeaders);
