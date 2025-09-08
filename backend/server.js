@@ -57,8 +57,14 @@ app.get("/api/restaurants", async (req, res) => {
   try {
     console.log("🍽️ WORKING: Serving restaurants from new endpoint");
     
-    // Get restaurants from MongoDB
-    const restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
+    // Get restaurants from MongoDB (check both isActive and all restaurants)
+    let restaurants = await Restaurant.find({ isActive: true }).select('-__v -createdBy');
+    
+    // If no active restaurants found, get all restaurants
+    if (restaurants.length === 0) {
+      console.log("No active restaurants found, getting all restaurants");
+      restaurants = await Restaurant.find({}).select('-__v -createdBy');
+    }
     
     if (restaurants.length === 0) {
       console.log("No restaurants found in database");
