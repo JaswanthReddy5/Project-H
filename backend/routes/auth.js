@@ -6,7 +6,7 @@ const User = require('../models/User');
 
 // Input validation middleware
 const validateAuthInput = (req, res, next) => {
-  const { username, password } = req.body;
+  const { username, password, phoneNumber } = req.body;
   
   if (!username || !password) {
     return res.status(400).json({ 
@@ -26,27 +26,55 @@ const validateAuthInput = (req, res, next) => {
     });
   }
   
+  // For registration, validate phone number
+  if (req.path === '/register') {
+    if (!phoneNumber) {
+      return res.status(400).json({ 
+        message: 'Phone number is required' 
+      });
+    }
+    
+    // Basic phone number validation
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      return res.status(400).json({ 
+        message: 'Please enter a valid phone number' 
+      });
+    }
+  }
+  
   next();
 };
 
 // Register
 router.post('/register', validateAuthInput, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, phoneNumber } = req.body;
 
     console.log('Registration attempt for username:', username);
 
     // Check if user already exists
-    let existingUser = await User.findOne({ username: username.toLowerCase() });
+    let existingUser = await User.findOne({ 
+      $or: [
+        { username: username.toLowerCase() },
+        { phoneNumber: phoneNumber }
+      ]
+    });
     if (existingUser) {
-      console.log('Username already exists:', username);
-      return res.status(400).json({ message: 'Username already exists' });
+      if (existingUser.username === username.toLowerCase()) {
+        console.log('Username already exists:', username);
+        return res.status(400).json({ message: 'Username already exists' });
+      } else {
+        console.log('Phone number already exists:', phoneNumber);
+        return res.status(400).json({ message: 'Phone number already exists' });
+      }
     }
 
     // Create new user
     const user = new User({
       username: username.toLowerCase().trim(),
       password,
+      phoneNumber,
       role: 'user'
     });
 
@@ -70,6 +98,7 @@ router.post('/register', validateAuthInput, async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
+        phoneNumber: user.phoneNumber,
         role: user.role
       },
       message: 'User registered successfully'
@@ -131,6 +160,7 @@ router.post('/login', validateAuthInput, async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
+        phoneNumber: user.phoneNumber,
         role: user.role
       },
       message: 'Login successful'
@@ -161,6 +191,7 @@ router.get('/verify', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
+        phoneNumber: user.phoneNumber,
         role: user.role
       }
     });

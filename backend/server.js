@@ -5,7 +5,6 @@ const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const http = require('http');
-const { Server } = require('socket.io');
 
 const { auth, isAdmin } = require("./middleware/auth");
 const contentModeration = require("./middleware/contentModeration");
@@ -308,10 +307,6 @@ app.post("/api/add", auth, strictRateLimit, async (req, res) => {
     await newItem.save();
     res.status(201).json(newItem);
 
-    // Emit real-time update to all clients
-    if (global.io) {
-      global.io.emit('productAdded', newItem);
-    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -320,59 +315,21 @@ app.post("/api/add", auth, strictRateLimit, async (req, res) => {
 // GET route for fetching items
 app.get("/api/items", async (req, res) => {
   try {
-    const items = await Item.find();
-    res.json(items);
+    const items = await Item.find().populate('sellerId', 'username phoneNumber');
+    
+    // Transform the data to include seller information
+    const itemsWithSellerInfo = items.map(item => ({
+      ...item.toObject(),
+      sellerName: item.sellerId?.username || 'Unknown',
+      sellerPhoneNumber: item.sellerId?.phoneNumber || null
+    }));
+    
+    res.json(itemsWithSellerInfo);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Start chat endpoint
-app.post("/api/start-chat", async (req, res) => {
-  try {
-    const { sellerId, userId, itemId } = req.body;
-    // Check if chat already exists for these participants and item
-    let chat = await Chat.findOne({ participants: { $all: [sellerId, userId] }, itemId });
-    if (!chat) {
-      chat = new Chat({
-        participants: [sellerId, userId],
-        itemId,
-      });
-      await chat.save();
-    }
-    res.json({ chatId: chat._id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get chat messages
-app.get("/api/chat/:chatId/messages", async (req, res) => {
-  try {
-    const messages = await Message.find({ chatId: req.params.chatId })
-      .sort({ createdAt: 1 });
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Send message endpoint
-app.post("/api/chat/:chatId/messages", async (req, res) => {
-  try {
-    const message = new Message({
-      chatId: req.params.chatId,
-      content: req.body.content,
-      senderId: req.body.senderId,
-      senderName: req.body.senderName,
-      createdAt: new Date(),
-    });
-    await message.save();
-    res.status(201).json(message);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // REMOVED: Old restaurant endpoint to avoid conflicts
 
@@ -664,32 +621,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Protected routes with authentication and content moderation
-app.post("/api/chats", auth, contentModeration, async (req, res) => {
-  try {
-    const chat = new Chat({
-      ...req.body,
-      userId: req.user._id
-    });
-    await chat.save();
-    res.status(201).json(chat);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.post("/api/messages", auth, contentModeration, async (req, res) => {
-  try {
-    const message = new Message({
-      ...req.body,
-      userId: req.user._id
-    });
-    await message.save();
-    res.status(201).json(message);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
 // Admin routes
 app.get("/api/admin/users", auth, isAdmin, async (req, res) => {
@@ -711,121 +642,8 @@ app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
   }
 });
 
-// Add chat info endpoint for chat page context
-app.get("/api/chat/:chatId/info", async (req, res) => {
-  try {
-    const chat = await Chat.findById(req.params.chatId);
-    if (!chat) return res.status(404).json({ error: "Chat not found" });
-    const item = await Item.findById(chat.itemId);
-    // Try to get seller and buyer info from item and chat
-    let sellerId = item?.sellerId || chat.participants[0];
-    let sellerName = item?.sellerName || undefined;
-    let buyerId = chat.participants.find(id => id !== sellerId);
-    let buyerName = undefined;
-    // If item has sellerName, use it; otherwise, fallback
-    if (!sellerName && item) sellerName = item.sellerName;
-    // Try to get buyerName from item if available (if you store it)
-    // Otherwise, leave as undefined
-    res.json({
-      chatId: chat._id,
-      sellerId,
-      sellerName,
-      buyerId,
-      buyerName,
-      productName: item?.productName || '',
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: [
-      'https://magnificent-kringle-05c986.netlify.app',
-      'https://project-h-zv5o.onrender.com'
-    ],
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-  },
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
-});
-
-// Store active users and their socket IDs
-const activeUsers = new Map();
-
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Handle user joining
-  socket.on('userJoin', (userId) => {
-    if (userId) {
-      activeUsers.set(userId, socket.id);
-      console.log(`User ${userId} joined with socket ${socket.id}`);
-    }
-  });
-
-  // Handle joining chat room
-  socket.on('joinRoom', (chatId) => {
-    if (chatId) {
-      socket.join(chatId);
-      console.log(`Socket ${socket.id} joined room ${chatId}`);
-    }
-  });
-
-  // Handle sending messages
-  socket.on('sendMessage', async ({ chatId, message }) => {
-    try {
-      if (!chatId || !message) {
-        throw new Error('Invalid message data');
-      }
-
-      // Save message to database
-      const savedMessage = new Message({
-        chatId,
-        content: message.content,
-        senderId: message.senderId,
-        senderName: message.senderName,
-        createdAt: new Date()
-      });
-      await savedMessage.save();
-
-      // Broadcast to all clients in the room
-      io.in(chatId).emit('receiveMessage', savedMessage);
-    } catch (error) {
-      console.error('Error saving/broadcasting message:', error);
-      socket.emit('error', { message: 'Failed to send message' });
-    }
-  });
-
-  // Handle typing status
-  socket.on('typing', ({ chatId, userId, isTyping }) => {
-    if (chatId && userId) {
-      socket.to(chatId).emit('userTyping', { userId, isTyping });
-    }
-  });
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    // Remove user from active users
-    for (const [userId, socketId] of activeUsers.entries()) {
-      if (socketId === socket.id) {
-        activeUsers.delete(userId);
-        break;
-      }
-    }
-  });
-});
-
-// At the bottom, after initializing io:
-global.io = io;
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {

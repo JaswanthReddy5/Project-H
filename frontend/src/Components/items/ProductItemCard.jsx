@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 
-
-export const ProductItemCard = ({ item, onStartChat }) => {
-  const handleChatClick = () => {
-    if (!item.sellerId && !item.seller && !item.ownerId) {
-      console.error("No seller ID found for this item.");
-      return;
+export const ProductItemCard = ({ item }) => {
+  const handleCallClick = () => {
+    if (item.sellerPhoneNumber) {
+      // Create a tel: link to initiate phone call
+      window.location.href = `tel:${item.sellerPhoneNumber}`;
+    } else {
+      console.error("No phone number found for this seller.");
     }
-    onStartChat(item.sellerId || item.seller || item.ownerId, item.sellerName, item._id, item.productName);
   };
 
   return (
@@ -20,11 +20,21 @@ export const ProductItemCard = ({ item, onStartChat }) => {
       </div>
       <p className="text-yellow-400 text-xl">${item.price}</p>
       <p className="text-gray-400">Quantity: {item.quantity}</p>
+      
+      {/* Phone number display */}
+      {item.sellerPhoneNumber && (
+        <div className="w-full mt-2 p-2 bg-gray-800 rounded">
+          <p className="text-sm text-gray-300">Contact:</p>
+          <p className="text-cyan-400 font-mono">{item.sellerPhoneNumber}</p>
+        </div>
+      )}
+      
       <button 
-        onClick={handleChatClick}
-        className="bg-cyan-400 text-black px-4 py-2 rounded mt-4 hover:bg-cyan-500 transition-colors w-full text-center"
+        onClick={handleCallClick}
+        className="bg-green-500 text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-colors w-full text-center flex items-center justify-center gap-2"
+        disabled={!item.sellerPhoneNumber}
       >
-        Chat with {item.sellerName}
+        📞 Call {item.sellerName}
       </button>
     </div>
   );

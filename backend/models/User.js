@@ -26,6 +26,13 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   },
+  phoneNumber: {
+    type: String,
+    required: true,
+    trim: true,
+    match: /^[\+]?[1-9][\d]{0,15}$/, // International phone number format
+    unique: true
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],

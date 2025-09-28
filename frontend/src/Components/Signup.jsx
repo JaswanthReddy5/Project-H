@@ -8,7 +8,8 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phoneNumber: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +37,8 @@ const Signup = () => {
     try {
       const response = await axios.post('/api/auth/register', {
         username: formData.username,
-        password: formData.password
+        password: formData.password,
+        phoneNumber: formData.phoneNumber
       });
       
       if (response.data.token) {
@@ -75,7 +77,19 @@ const Signup = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              placeholder="Username"
+              placeholder=" New Username"
+              className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              required
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              placeholder="Phone Number (e.g., +1234567890)"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
               disabled={isLoading}
@@ -88,7 +102,7 @@ const Signup = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Password"
+              placeholder="new Password(Atleast 6 characters)"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
               disabled={isLoading}
@@ -101,7 +115,7 @@ const Signup = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              placeholder="Confirm Password"
+              placeholder="Confirm new Password"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
               disabled={isLoading}

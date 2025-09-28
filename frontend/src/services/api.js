@@ -23,15 +23,6 @@ export const itemsAPI = {
     }
   },
 
-  startChat: async (payload) => {
-    try {
-      const response = await axios.post(`${SERVER_URL}/api/start-chat`, payload);
-      return response.data;
-    } catch (error) {
-      console.error("Error starting chat:", error);
-      throw error;
-    }
-  }
 };
 
 export { SERVER_URL };
