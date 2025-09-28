@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  VITE_SERVER_URL = "https://project-h-zv5o.onrender.com"
 
 # SPA fallback (kept here as a backup; you also have public/_redirects)
 [[redirects]]

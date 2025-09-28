@@ -34,15 +34,15 @@ export const SocketProvider = ({ children }) => {
   const reconnectDelay = 2000;
 
   const getServerUrl = useCallback(() => {
-    // ✅ Try multiple server URLs in order
-    const serverUrls = [
-      'http://localhost:5000',
-      'http://127.0.0.1:5000',
-      'http://192.168.35.239:5000', // Your specific IP
-      'http://192.168.239.96:5000'  // Alternative IP
-    ];
+    // ✅ Use environment variable for production, fallback to localhost for development
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'https://project-h-zv5o.onrender.com';
     
-    return serverUrls[0]; // You can implement fallback logic here
+    // For development, use localhost
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    
+    return serverUrl;
   }, []);
 
   const cleanup = useCallback(() => {
@@ -113,7 +113,7 @@ export const SocketProvider = ({ children }) => {
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           scheduleReconnect();
         } else {
-          setError('❌ Server not running on localhost:5000. Please start your server.');
+          setError('❌ Unable to connect to server. Please check your connection.');
         }
       });
 
