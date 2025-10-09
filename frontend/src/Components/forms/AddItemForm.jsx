@@ -17,9 +17,21 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [lastSubmission, setLastSubmission] = useState(0);
+
+  // Input sanitization to prevent XSS
+  const sanitizeInput = (input) => {
+    if (typeof input !== 'string') return input;
+    return input
+      .replace(/[<>]/g, '') // Remove < and > characters
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .trim();
+  };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const sanitizedValue = sanitizeInput(e.target.value);
+    setFormData({ ...formData, [e.target.name]: sanitizedValue });
   };
 
   const validate = () => {
@@ -54,7 +66,7 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
         newErrors.time = "Time should be like '24 hrs', '2 days', or '30 min'.";
       }
     } else if (selectedOption === "product") {
-      // Product Name: same as work validation
+      // Product Name: enhanced validation
       if (!formData.productName.trim()) {
         newErrors.productName = "Product name is required.";
       } else if (formData.productName.trim().length < 5) {
@@ -65,32 +77,48 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
         newErrors.productName = "Please enter a meaningful product name, not repeated characters.";
       } else if (/^\d+$/.test(formData.productName.trim())) {
         newErrors.productName = "Product name cannot be only numbers.";
+      } else if (formData.productName.trim().length > 200) {
+        newErrors.productName = "Product name must be less than 200 characters.";
       }
-      // Price: same as amount validation
+      // Price: enhanced validation with range checks
       if (!formData.price.trim()) {
         newErrors.price = "Price is required.";
       } else if (!/^\d+$/.test(formData.price)) {
         newErrors.price = "Price should be a number.";
+      } else if (parseInt(formData.price, 10) < 1) {
+        newErrors.price = "Price must be at least ₹1.";
       } else if (parseInt(formData.price, 10) >= 100000) {
-        newErrors.price = "Price should be less than 100000.";
+        newErrors.price = "Price should be less than ₹100,000.";
       }
-      // Description: at least 5 characters
+      // Description: enhanced validation
       if (!formData.quantity.trim()) {
-        newErrors.quantity = "Description is required.";
+        newErrors.quantity = "Product description is required.";
       } else if (formData.quantity.trim().length < 5) {
-        newErrors.quantity = "Please provide a more detailed description.";
+        newErrors.quantity = "Please provide a more detailed product description.";
+      } else if (formData.quantity.trim().length > 500) {
+        newErrors.quantity = "Product description must be less than 500 characters.";
+      } else if (!/[a-zA-Z]/.test(formData.quantity)) {
+        newErrors.quantity = "Description must contain at least one letter.";
       }
     }
     return newErrors;
   };
   
   const handleSubmit = async () => {
+    // Rate limiting: prevent rapid submissions (minimum 2 seconds between submissions)
+    const now = Date.now();
+    if (now - lastSubmission < 2000) {
+      alert("Please wait a moment before submitting again.");
+      return;
+    }
+
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
     try {
       setLoading(true);
+      setLastSubmission(now);
       
       if (!user) {
         alert("Please log in to add items");
