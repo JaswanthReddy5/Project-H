@@ -82,6 +82,8 @@ export const ProductsPage = () => {
     );
   }
 
+  const productItems = cartItems.filter(item => item.type === 'product');
+
   return (
     <div className="p-6 text-white">
       <div className="mb-6">
@@ -90,7 +92,7 @@ export const ProductsPage = () => {
       </div>
       
       <div className="grid gap-4">
-        {cartItems.map((item) => (
+        {productItems.map((item) => (
           <ProductItemCard 
             key={item._id} 
             item={item}

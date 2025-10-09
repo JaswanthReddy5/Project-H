@@ -6,7 +6,6 @@ import { WorkPage } from './WorkPage';
 import { RestaurantsPage } from './RestaurantsPage';
 import { ProductsPage } from './ProductsPage';
 import { ProfilePage } from './ProfilePage';
-import { MaintenancePage } from "../Components/MaintenancePage";
 
 export const HomePage = () => {
   const location = useLocation();
@@ -22,14 +21,16 @@ export const HomePage = () => {
   const renderCurrentPage = () => {
     switch(activeIndex) {
       case 0:
-        // First tab now shows Food (Restaurants)
+        // First tab shows Food (Restaurants)
         return <RestaurantsPage />;
       case 1:
-        // Second tab now shows Home (under maintenance)
-        return <MaintenancePage pageName="Home" />;
+        // Second tab shows Home (WorkPage)
+        return <WorkPage />;
       case 3:
-        return <MaintenancePage pageName="Products" />;
+        // Fourth tab shows Products
+        return <ProductsPage />;
       case 4:
+        // Fifth tab shows Profile
         return <ProfilePage />;
       default:
         return <RestaurantsPage />;

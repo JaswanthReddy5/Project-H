@@ -32,7 +32,7 @@ export const WorkPage = () => {
     );
   }
 
-  const workItems = cartItems.filter(item => item.type === "default");
+  const workItems = cartItems.filter(item => item.type === "work");
 
   return (
     <div className="p-6 text-white">

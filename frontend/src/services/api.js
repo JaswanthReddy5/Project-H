@@ -1,11 +1,11 @@
-import axios from 'axios';
+import axiosInstance from '../utils/axios';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://project-h-zv5o.onrender.com';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
 
 export const itemsAPI = {
   fetchItems: async () => {
     try {
-      const response = await axios.get(`${SERVER_URL}/api/items`);
+      const response = await axiosInstance.get('/api/items');
       return response.data;
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -15,10 +15,20 @@ export const itemsAPI = {
 
   addItem: async (itemData) => {
     try {
-      const response = await axios.post(`${SERVER_URL}/api/add`, itemData);
+      const response = await axiosInstance.post('/api/add', itemData);
       return response.data;
     } catch (error) {
       console.error("Error adding item:", error);
+      throw error;
+    }
+  },
+
+  deleteAllWorkItems: async () => {
+    try {
+      const response = await axiosInstance.delete('/api/items/work');
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting work items:", error);
       throw error;
     }
   },

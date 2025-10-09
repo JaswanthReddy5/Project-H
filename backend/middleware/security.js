@@ -22,19 +22,19 @@ const createRateLimit = (windowMs, max, message) => {
 // Different rate limits for different endpoints
 const authRateLimit = createRateLimit(
   15 * 60 * 1000, // 15 minutes
-  5, // 5 attempts per window
+  50, // 50 attempts per window (increased for development)
   'Too many authentication attempts, please try again later'
 );
 
 const apiRateLimit = createRateLimit(
   15 * 60 * 1000, // 15 minutes
-  100, // 100 requests per window
+  200, // 200 requests per window (increased for development)
   'Too many API requests, please try again later'
 );
 
 const strictRateLimit = createRateLimit(
   15 * 60 * 1000, // 15 minutes
-  20, // 20 requests per window
+  100, // 100 requests per window (increased for development)
   'Rate limit exceeded, please slow down'
 );
 
@@ -46,7 +46,7 @@ const securityHeaders = helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://project-h-zv5o.onrender.com"],
+      connectSrc: ["'self'", "https://project-h-zv5o.onrender.com", "http://localhost:5000", "http://127.0.0.1:5000"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -114,7 +114,9 @@ const requestSizeLimit = (req, res, next) => {
 const validateOrigin = (req, res, next) => {
   const allowedOrigins = [
     'https://magnificent-kringle-05c986.netlify.app',
-    'https://project-h-zv5o.onrender.com'
+    'https://project-h-zv5o.onrender.com',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
   ];
 
   const origin = req.get('origin');

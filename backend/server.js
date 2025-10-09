@@ -121,13 +121,13 @@ const ItemSchema = new mongoose.Schema({
   },
   productName: {
     type: String,
-    required: true,
+    required: function() { return this.type === 'product'; }, // Required only for products
     trim: true,
     maxlength: 200
   },
   price: {
     type: String,
-    required: true,
+    required: function() { return this.type === 'product'; }, // Only required for products
     trim: true,
     maxlength: 50
   },
@@ -297,8 +297,8 @@ const Chat = mongoose.model("Chat", ChatSchema);
 const Message = mongoose.model("Message", MessageSchema);
 const Restaurant = mongoose.model("Restaurant", RestaurantSchema);
 
-// POST route for adding items - SECURED
-app.post("/api/add", auth, strictRateLimit, async (req, res) => {
+// POST route for adding items - SECURED + MODERATION
+app.post("/api/add", auth, strictRateLimit, contentModeration, async (req, res) => {
   try {
     const newItem = new Item({
       ...req.body,
@@ -308,6 +308,9 @@ app.post("/api/add", auth, strictRateLimit, async (req, res) => {
     res.status(201).json(newItem);
 
   } catch (err) {
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -330,6 +333,20 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
+// DELETE route for clearing all work items
+app.delete("/api/items/work", async (req, res) => {
+  try {
+    const result = await Item.deleteMany({ type: 'default' });
+    console.log(`🗑️  Deleted ${result.deletedCount} work items`);
+    res.json({ 
+      message: `Successfully deleted ${result.deletedCount} work items`,
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    console.error("Error deleting work items:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // REMOVED: Old restaurant endpoint to avoid conflicts
 

@@ -97,12 +97,26 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
         return;
       }
 
-      const itemData = {
-        type: selectedOption,
-        sellerId: user.id || user.sub,
-        sellerName: user.username,
-        ...formData,
-      };
+      let itemData;
+      if (selectedOption === "default") {
+        itemData = {
+          type: "work",
+          sellerId: user.id || user.sub,
+          sellerName: user.username,
+          work: formData.work,
+          amount: formData.amount,
+          time: formData.time,
+        };
+      } else {
+        itemData = {
+          type: "product",
+          sellerId: user.id || user.sub,
+          sellerName: user.username,
+          productName: formData.productName,
+          price: formData.price,
+          quantity: formData.quantity,
+        };
+      }
 
       console.log("Sending item data:", itemData);
 
@@ -112,7 +126,8 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
       onSuccess();
     } catch (error) {
       console.error("Error adding item:", error);
-      alert("Failed to add item. Please try again.");
+      const serverMessage = error?.response?.data?.error || error.message || "Failed to add item.";
+      alert(serverMessage);
     } finally {
       setLoading(false);
     }
