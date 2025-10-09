@@ -15,7 +15,7 @@ export const WorkItemCard = ({ item }) => {
       <div className="flex justify-between w-full mb-2">    
         <p className="font-bold text-lg">{item.work}</p>
       </div>
-      <p className="text-yellow-400 text-xl">${item.amount}</p>
+      <p className="text-yellow-400 text-xl">₹{item.amount}</p>
       <p className="text-gray-400">Time: {item.time}</p>
       
       {/* Contact display */}

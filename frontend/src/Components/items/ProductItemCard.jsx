@@ -15,7 +15,7 @@ export const ProductItemCard = ({ item }) => {
       <div className="flex justify-between w-full mb-2">    
         <p className="font-bold text-lg">{item.productName}</p>
       </div>
-      <p className="text-yellow-400 text-xl">${item.price}</p>
+      <p className="text-yellow-400 text-xl">₹{item.price}</p>
       <p className="text-gray-400">Quantity: {item.quantity}</p>
       
       {/* Contact display */}
