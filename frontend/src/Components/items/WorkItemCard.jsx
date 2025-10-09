@@ -1,15 +1,12 @@
 /* eslint-disable react/prop-types */
-import { useState } from 'react';
-import { CallPad } from '../CallPad';
 
 export const WorkItemCard = ({ item }) => {
-  const [showCallPad, setShowCallPad] = useState(false);
-
   const handleCallClick = () => {
     if (item.sellerPhoneNumber) {
-      setShowCallPad(true);
+      // Create a tel: link to initiate phone call
+      window.location.href = `tel:${item.sellerPhoneNumber}`;
     } else {
-      console.error("No phone number found for this seller.");
+      alert("No phone number available for this seller.");
     }
   };
 
@@ -25,23 +22,20 @@ export const WorkItemCard = ({ item }) => {
       <div className="w-full mt-2 p-2 bg-gray-800 rounded">
         <p className="text-sm text-gray-300">Contact:</p>
         <p className="text-cyan-400 font-mono">{item.sellerName || 'Unknown'}</p>
+        {item.sellerPhoneNumber ? (
+          <p className="text-gray-400 text-sm mt-1">{item.sellerPhoneNumber}</p>
+        ) : (
+          <p className="text-red-400 text-sm mt-1">No phone number available</p>
+        )}
       </div>
       
       <button 
         onClick={handleCallClick}
-        className="bg-green-500 text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-colors w-full text-center flex items-center justify-center gap-2"
+        className="bg-green-500 text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-colors w-full text-center flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
         disabled={!item.sellerPhoneNumber}
       >
         📞 Call {item.sellerName ? `(${item.sellerName})` : ''}
       </button>
-
-      {/* CallPad Modal */}
-      <CallPad
-        isOpen={showCallPad}
-        onClose={() => setShowCallPad(false)}
-        phoneNumber={item.sellerPhoneNumber}
-        sellerName={item.sellerName}
-      />
     </div>
   );
 };
