@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
+import { useState } from 'react';
+import { CallPad } from '../CallPad';
 
 export const ProductItemCard = ({ item }) => {
+  const [showCallPad, setShowCallPad] = useState(false);
+
   const handleCallClick = () => {
     if (item.sellerPhoneNumber) {
-      // Create a tel: link to initiate phone call
-      window.location.href = `tel:${item.sellerPhoneNumber}`;
+      setShowCallPad(true);
     } else {
       console.error("No phone number found for this seller.");
     }
@@ -31,6 +34,14 @@ export const ProductItemCard = ({ item }) => {
       >
         📞 Call {item.sellerName ? `(${item.sellerName})` : ''}
       </button>
+
+      {/* CallPad Modal */}
+      <CallPad
+        isOpen={showCallPad}
+        onClose={() => setShowCallPad(false)}
+        phoneNumber={item.sellerPhoneNumber}
+        sellerName={item.sellerName}
+      />
     </div>
   );
 };
