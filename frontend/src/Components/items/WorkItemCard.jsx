@@ -1,6 +1,45 @@
 /* eslint-disable react/prop-types */
+import { useState, useEffect } from 'react';
 
 export const WorkItemCard = ({ item }) => {
+  const [remainingTime, setRemainingTime] = useState(null);
+
+  // Calculate remaining time
+  const getRemainingTime = () => {
+    if (!item.expiresAt) return null;
+    
+    const now = new Date();
+    const expiration = new Date(item.expiresAt);
+    const diffMs = expiration - now;
+    
+    if (diffMs <= 0) return "Expired";
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} left`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} left`;
+    } else {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} left`;
+    }
+  };
+
+  // Update remaining time every minute
+  useEffect(() => {
+    if (item.expiresAt) {
+      setRemainingTime(getRemainingTime());
+      
+      const interval = setInterval(() => {
+        setRemainingTime(getRemainingTime());
+      }, 60000); // Update every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [item.expiresAt]);
+
   const handleCallClick = () => {
     if (item.sellerPhoneNumber) {
       // Create a tel: link to initiate phone call
@@ -16,7 +55,18 @@ export const WorkItemCard = ({ item }) => {
         <p className="font-bold text-lg">{item.work}</p>
       </div>
       <p className="text-yellow-400 text-xl">₹{item.amount}</p>
-      <p className="text-gray-400">Time: {item.time}</p>
+      <p className="text-gray-400">Duration: {item.time}</p>
+      {remainingTime && (
+        <p className={`text-sm font-medium ${
+          remainingTime === "Expired" 
+            ? "text-red-400" 
+            : remainingTime.includes("minute") 
+              ? "text-orange-400" 
+              : "text-green-400"
+        }`}>
+          ⏰ {remainingTime}
+        </p>
+      )}
       
       {/* Contact display */}
       <div className="w-full mt-2 p-2 bg-gray-800 rounded">

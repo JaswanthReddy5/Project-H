@@ -14,6 +14,7 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
     productName: "",
     price: "",
     quantity: "",
+    productTime: "", // Add expiration time for products
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -61,9 +62,9 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
       if (!formData.time.trim()) {
         newErrors.time = "Time is required.";
       } else if (
-        !/^\d+\s*(min|mins|minutes|hr|hrs|hours|day|days)$/i.test(formData.time.trim())
+        !/^\d+\s*(min|mins|minutes|hr|hrs|hours|day|days|week|weeks)$/i.test(formData.time.trim())
       ) {
-        newErrors.time = "Time should be like '24 hrs', '2 days', or '30 min'.";
+        newErrors.time = "Time should be like '24 hrs', '2 days', '30 min', or '1 week'.";
       }
     } else if (selectedOption === "product") {
       // Product Name: enhanced validation
@@ -99,6 +100,11 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
         newErrors.quantity = "Product description must be less than 500 characters.";
       } else if (!/[a-zA-Z]/.test(formData.quantity)) {
         newErrors.quantity = "Description must contain at least one letter.";
+      }
+      // Product Time: optional expiration time
+      if (formData.productTime.trim() && 
+          !/^\d+\s*(min|mins|minutes|hr|hrs|hours|day|days|week|weeks)$/i.test(formData.productTime.trim())) {
+        newErrors.productTime = "Time should be like '24 hrs', '2 days', '30 min', or '1 week'.";
       }
     }
     return newErrors;
@@ -143,6 +149,7 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
           productName: formData.productName,
           price: formData.price,
           quantity: formData.quantity,
+          time: formData.productTime, // Add expiration time for products
         };
       }
 
@@ -150,7 +157,7 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
 
       await itemsAPI.addItem(itemData);
       alert("Item added successfully!");
-      setFormData({ work: "", amount: "", time: "", productName: "", price: "", quantity: "" });
+      setFormData({ work: "", amount: "", time: "", productName: "", price: "", quantity: "", productTime: "" });
       onSuccess();
     } catch (error) {
       console.error("Error adding item:", error);
@@ -220,6 +227,21 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
             className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" 
           />
           {errors.time && <div className="text-red-400 text-sm ml-2">{errors.time}</div>}
+          
+          {/* Quick time presets */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-gray-400 text-sm">Quick select:</span>
+            {['30 min', '1 hr', '2 hrs', '4 hrs', '8 hrs', '1 day', '2 days'].map(preset => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setFormData({...formData, time: preset})}
+                className="px-3 py-1 bg-gray-700 text-cyan-400 rounded text-sm hover:bg-gray-600 transition-colors"
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
           <button 
             onClick={handleSubmit} 
             disabled={loading}
@@ -257,6 +279,37 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
             className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" 
           />
           {errors.quantity && <div className="text-red-400 text-sm ml-2">{errors.quantity}</div>}
+          <input 
+            type="text" 
+            name="productTime" 
+            placeholder="Expiration Time (optional, e.g., 24 hrs, 2 days, 30 min)" 
+            value={formData.productTime} 
+            onChange={handleChange} 
+            className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" 
+          />
+          {errors.productTime && <div className="text-red-400 text-sm ml-2">{errors.productTime}</div>}
+          
+          {/* Quick time presets for products */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-gray-400 text-sm">Quick select:</span>
+            {['30 min', '1 hr', '2 hrs', '4 hrs', '8 hrs', '1 day', '2 days', '1 week'].map(preset => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setFormData({...formData, productTime: preset})}
+                className="px-3 py-1 bg-gray-700 text-cyan-400 rounded text-sm hover:bg-gray-600 transition-colors"
+              >
+                {preset}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, productTime: ""})}
+              className="px-3 py-1 bg-red-700 text-white rounded text-sm hover:bg-red-600 transition-colors"
+            >
+              No expiration
+            </button>
+          </div>
           <button 
             onClick={handleSubmit} 
             disabled={loading}

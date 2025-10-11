@@ -97,6 +97,32 @@ mongoose.connection.on("error", (err) => {
   console.error("MongoDB connection error:", err);
 });
 
+// Function to parse time string and calculate expiration date
+function calculateExpirationDate(timeString) {
+  if (!timeString || typeof timeString !== 'string') return null;
+  
+  const now = new Date();
+  const timeStr = timeString.toLowerCase().trim();
+  
+  // Parse different time formats
+  const timePatterns = [
+    { pattern: /(\d+)\s*(min|mins|minutes?)/, multiplier: 60 * 1000 }, // minutes
+    { pattern: /(\d+)\s*(hr|hrs|hours?)/, multiplier: 60 * 60 * 1000 }, // hours
+    { pattern: /(\d+)\s*(day|days)/, multiplier: 24 * 60 * 60 * 1000 }, // days
+    { pattern: /(\d+)\s*(week|weeks)/, multiplier: 7 * 24 * 60 * 60 * 1000 }, // weeks
+  ];
+  
+  for (const { pattern, multiplier } of timePatterns) {
+    const match = timeStr.match(pattern);
+    if (match) {
+      const value = parseInt(match[1], 10);
+      return new Date(now.getTime() + (value * multiplier));
+    }
+  }
+  
+  return null; // Invalid time format
+}
+
 const ItemSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -144,6 +170,10 @@ const ItemSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  expiresAt: {
+    type: Date,
+    default: null
   },
   createdAt: { 
     type: Date, 
@@ -300,10 +330,21 @@ const Restaurant = mongoose.model("Restaurant", RestaurantSchema);
 // POST route for adding items - SECURED + MODERATION
 app.post("/api/add", auth, strictRateLimit, contentModeration, async (req, res) => {
   try {
-    const newItem = new Item({
+    const itemData = {
       ...req.body,
       sellerId: req.user._id // Ensure user can only add items for themselves
-    });
+    };
+
+    // Calculate expiration date for both work items and products
+    if (req.body.time) {
+      const expirationDate = calculateExpirationDate(req.body.time);
+      if (expirationDate) {
+        itemData.expiresAt = expirationDate;
+        console.log(`⏰ ${req.body.type} item will expire at: ${expirationDate.toISOString()}`);
+      }
+    }
+
+    const newItem = new Item(itemData);
     await newItem.save();
     res.status(201).json(newItem);
 
@@ -320,8 +361,20 @@ app.get("/api/items", async (req, res) => {
   try {
     const items = await Item.find().populate('sellerId', 'username phoneNumber');
     
+    // Filter out expired items (both work and products)
+    const now = new Date();
+    const activeItems = items.filter(item => {
+      // Check if item has expiration set
+      if (item.expiresAt) {
+        return item.expiresAt > now; // Not expired yet
+      }
+      
+      // Keep items without expiration set
+      return true;
+    });
+    
     // Transform the data to include seller information
-    const itemsWithSellerInfo = items.map(item => ({
+    const itemsWithSellerInfo = activeItems.map(item => ({
       ...item.toObject(),
       sellerName: item.sellerId?.username || 'Unknown',
       sellerPhoneNumber: item.sellerId?.phoneNumber || null
@@ -661,6 +714,22 @@ app.delete("/api/admin/messages/:id", auth, isAdmin, async (req, res) => {
 
 
 const server = http.createServer(app);
+
+// Cleanup job to remove expired items (both work and products) every 5 minutes
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const result = await Item.deleteMany({
+      expiresAt: { $lt: now }
+    });
+    
+    if (result.deletedCount > 0) {
+      console.log(`🧹 Cleaned up ${result.deletedCount} expired items`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up expired items:', error);
+  }
+}, 5 * 60 * 1000); // Run every 5 minutes
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
