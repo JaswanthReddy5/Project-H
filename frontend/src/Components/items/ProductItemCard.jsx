@@ -90,6 +90,7 @@ export const ProductItemCard = ({ item }) => {
       setIsLoading(true);
       console.log("Showing interest for item:", item._id);
       console.log("User data:", user);
+      console.log("Server URL:", import.meta.env.VITE_SERVER_URL || 'http://localhost:5000');
       
       const response = await itemsAPI.showInterest(item._id);
       console.log("Interest response:", response);
@@ -104,7 +105,23 @@ export const ProductItemCard = ({ item }) => {
     } catch (error) {
       console.error("Error showing interest:", error);
       console.error("Error response:", error?.response?.data);
-      const errorMessage = error?.response?.data?.error || "Failed to show interest.";
+      console.error("Error code:", error?.code);
+      console.error("Error message:", error?.message);
+      
+      let errorMessage = "Failed to show interest.";
+      
+      if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.code === 'ECONNREFUSED' || error?.message?.includes('ECONNREFUSED')) {
+        errorMessage = "Cannot connect to server. Please make sure the server is running.";
+      } else if (error?.response?.status === 404) {
+        errorMessage = "Server endpoint not found. Please contact support.";
+      } else if (error?.response?.status === 401) {
+        errorMessage = "Please log in again.";
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
       alert(errorMessage);
     } finally {
       setIsLoading(false);
