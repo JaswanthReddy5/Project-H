@@ -33,6 +33,26 @@ export const itemsAPI = {
     }
   },
 
+  showInterest: async (itemId) => {
+    try {
+      const response = await axiosInstance.post(`/api/items/${itemId}/interest`);
+      return response.data;
+    } catch (error) {
+      console.error("Error showing interest:", error);
+      throw error;
+    }
+  },
+
+  releaseContact: async (itemId) => {
+    try {
+      const response = await axiosInstance.post(`/api/items/${itemId}/release`);
+      return response.data;
+    } catch (error) {
+      console.error("Error releasing contact:", error);
+      throw error;
+    }
+  },
+
 };
 
 export { SERVER_URL };

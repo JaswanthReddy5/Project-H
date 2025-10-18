@@ -1,8 +1,15 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { itemsAPI } from '../../services/api';
 
 export const WorkItemCard = ({ item }) => {
+  const { user } = useAuth();
   const [remainingTime, setRemainingTime] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [contactInfo, setContactInfo] = useState(null);
+  const [contactTimeout, setContactTimeout] = useState(null);
+  const [isReleasing, setIsReleasing] = useState(false);
 
   // Calculate remaining time
   const getRemainingTime = () => {
@@ -27,6 +34,21 @@ export const WorkItemCard = ({ item }) => {
     }
   };
 
+  // Calculate contact timeout remaining time
+  const getContactTimeout = () => {
+    if (!item.contactedAt) return null;
+    
+    const now = new Date();
+    const contactedTime = new Date(item.contactedAt);
+    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const timeLeft = thirtyMinutes - (now - contactedTime);
+    
+    if (timeLeft <= 0) return "Expired";
+    
+    const minutesLeft = Math.floor(timeLeft / (1000 * 60));
+    return `${minutesLeft} min left`;
+  };
+
   // Update remaining time every minute
   useEffect(() => {
     if (item.expiresAt) {
@@ -40,12 +62,79 @@ export const WorkItemCard = ({ item }) => {
     }
   }, [item.expiresAt]);
 
+  // Update contact timeout every minute
+  useEffect(() => {
+    if (item.contactedAt) {
+      setContactTimeout(getContactTimeout());
+      
+      const interval = setInterval(() => {
+        setContactTimeout(getContactTimeout());
+      }, 60000); // Update every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [item.contactedAt]);
+
+  const handleShowInterest = async () => {
+    if (!user) {
+      alert("Please log in to show interest in this work.");
+      return;
+    }
+
+    if (item.sellerId === user.id || item.sellerId === user.sub) {
+      alert("You cannot contact yourself.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log("Showing interest for item:", item._id);
+      console.log("User data:", user);
+      
+      const response = await itemsAPI.showInterest(item._id);
+      console.log("Interest response:", response);
+      
+      if (response.success) {
+        setContactInfo({
+          phoneNumber: response.sellerPhoneNumber,
+          name: response.sellerName
+        });
+        alert("Interest shown successfully! You can now contact the seller.");
+      }
+    } catch (error) {
+      console.error("Error showing interest:", error);
+      console.error("Error response:", error?.response?.data);
+      const errorMessage = error?.response?.data?.error || "Failed to show interest.";
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCallClick = () => {
-    if (item.sellerPhoneNumber) {
-      // Create a tel: link to initiate phone call
-      window.location.href = `tel:${item.sellerPhoneNumber}`;
+    if (contactInfo?.phoneNumber) {
+      window.location.href = `tel:${contactInfo.phoneNumber}`;
     } else {
       alert("No phone number available for this seller.");
+    }
+  };
+
+  const handleReleaseContact = async () => {
+    if (!confirm("Are you sure you want to release this contact? The item will become available for others.")) {
+      return;
+    }
+
+    try {
+      setIsReleasing(true);
+      await itemsAPI.releaseContact(item._id);
+      alert("Contact released successfully! Item is now available for others.");
+      // Refresh the page or update state to reflect the change
+      window.location.reload();
+    } catch (error) {
+      const errorMessage = error?.response?.data?.error || "Failed to release contact.";
+      alert(errorMessage);
+    } finally {
+      setIsReleasing(false);
     }
   };
 
@@ -70,22 +159,86 @@ export const WorkItemCard = ({ item }) => {
       
       {/* Contact display */}
       <div className="w-full mt-2 p-2 bg-gray-800 rounded">
-        <p className="text-sm text-gray-300">Contact:</p>
+        <p className="text-sm text-gray-300">Seller:</p>
         <p className="text-cyan-400 font-mono">{item.sellerName || 'Unknown'}</p>
-        {item.sellerPhoneNumber ? (
-          <p className="text-gray-400 text-sm mt-1">{item.sellerPhoneNumber}</p>
+        
+        {/* Show contact status */}
+        {item.isContacted ? (
+          <div className="mt-2">
+            {item.contactedByName ? (
+              <div>
+                <p className="text-orange-400 text-sm">
+                  📞 Contacted by: {item.contactedByName}
+                </p>
+                {contactTimeout && (
+                  <p className={`text-xs mt-1 ${
+                    contactTimeout === "Expired" 
+                      ? "text-red-400" 
+                      : "text-yellow-400"
+                  }`}>
+                    ⏰ {contactTimeout}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-orange-400 text-sm">
+                📞 Already contacted by someone
+              </p>
+            )}
+          </div>
         ) : (
-          <p className="text-red-400 text-sm mt-1">No phone number available</p>
+          <p className="text-green-400 text-sm mt-1">
+            ✅ Available for contact
+          </p>
         )}
       </div>
       
-      <button 
-        onClick={handleCallClick}
-        className="bg-green-500 text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-colors w-full text-center flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
-        disabled={!item.sellerPhoneNumber}
-      >
-        📞 Call {item.sellerName ? `(${item.sellerName})` : ''}
-      </button>
+      {/* Show appropriate button based on contact status */}
+      {item.isContacted ? (
+        <div className="w-full mt-4 space-y-2">
+          {item.contactedBy === user?.id || item.contactedBy === user?.sub ? (
+            // User who contacted - show call and release buttons
+            <div className="space-y-2">
+              <button 
+                onClick={handleCallClick}
+                className="bg-green-500 text-white px-4 py-2 rounded w-full text-center flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"
+              >
+                📞 Call {item.sellerName}
+              </button>
+              <button 
+                onClick={handleReleaseContact}
+                disabled={isReleasing}
+                className="bg-red-500 text-white px-4 py-2 rounded w-full text-center flex items-center justify-center gap-2 hover:bg-red-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              >
+                {isReleasing ? "Releasing..." : "🔄 Release Contact"}
+              </button>
+            </div>
+          ) : (
+            // Other users - show disabled button
+            <button 
+              disabled
+              className="bg-gray-500 text-white px-4 py-2 rounded w-full text-center flex items-center justify-center gap-2 cursor-not-allowed"
+            >
+              📞 Already Contacted
+            </button>
+          )}
+        </div>
+      ) : contactInfo ? (
+        <button 
+          onClick={handleCallClick}
+          className="bg-green-500 text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-colors w-full text-center flex items-center justify-center gap-2"
+        >
+          📞 Call {contactInfo.name}
+        </button>
+      ) : (
+        <button 
+          onClick={handleShowInterest}
+          disabled={isLoading || !user || item.sellerId === user?.id || item.sellerId === user?.sub}
+          className="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600 transition-colors w-full text-center flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
+        >
+          {isLoading ? "Showing Interest..." : "🤝 Show Interest"}
+        </button>
+      )}
     </div>
   );
 };

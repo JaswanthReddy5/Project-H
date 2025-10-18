@@ -175,6 +175,19 @@ const ItemSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  isContacted: {
+    type: Boolean,
+    default: false
+  },
+  contactedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  contactedAt: {
+    type: Date,
+    default: null
+  },
   createdAt: { 
     type: Date, 
     default: Date.now 
@@ -359,7 +372,7 @@ app.post("/api/add", auth, strictRateLimit, contentModeration, async (req, res) 
 // GET route for fetching items
 app.get("/api/items", async (req, res) => {
   try {
-    const items = await Item.find().populate('sellerId', 'username phoneNumber');
+    const items = await Item.find().populate('sellerId', 'username phoneNumber').populate('contactedBy', 'username');
     
     // Filter out expired items (both work and products)
     const now = new Date();
@@ -373,11 +386,12 @@ app.get("/api/items", async (req, res) => {
       return true;
     });
     
-    // Transform the data to include seller information
+    // Transform the data to include seller information and contact status
     const itemsWithSellerInfo = activeItems.map(item => ({
       ...item.toObject(),
       sellerName: item.sellerId?.username || 'Unknown',
-      sellerPhoneNumber: item.sellerId?.phoneNumber || null
+      sellerPhoneNumber: item.sellerId?.phoneNumber || null,
+      contactedByName: item.contactedBy?.username || null
     }));
     
     res.json(itemsWithSellerInfo);
@@ -386,7 +400,7 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
-// DELETE route for clearing all work items
+// DELETE route for clearing all work items (MUST come before parameterized routes)
 app.delete("/api/items/work", async (req, res) => {
   try {
     const result = await Item.deleteMany({ type: 'default' });
@@ -397,6 +411,95 @@ app.delete("/api/items/work", async (req, res) => {
     });
   } catch (err) {
     console.error("Error deleting work items:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST route for showing interest in an item
+app.post("/api/items/:id/interest", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    
+    const item = await Item.findById(id).populate('sellerId', 'username phoneNumber');
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    
+    // Check if item is already contacted
+    if (item.isContacted) {
+      return res.status(400).json({ 
+        error: "This item has already been contacted by someone else",
+        contactedBy: item.contactedBy
+      });
+    }
+    
+    // Check if user is trying to contact their own item
+    if (item.sellerId._id.toString() === userId.toString()) {
+      return res.status(400).json({ error: "You cannot contact yourself" });
+    }
+    
+    // Mark item as contacted
+    item.isContacted = true;
+    item.contactedBy = userId;
+    item.contactedAt = new Date();
+    
+    await item.save();
+    
+    console.log(`📞 User ${req.user.username} contacted seller for item: ${item.work || item.productName}`);
+    
+    res.json({ 
+      success: true,
+      message: "Interest shown successfully! You can now contact the seller.",
+      sellerPhoneNumber: item.sellerId.phoneNumber,
+      sellerName: item.sellerId.username,
+      contactedAt: item.contactedAt
+    });
+    
+  } catch (err) {
+    console.error("Error showing interest:", err);
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id,
+      itemId: req.params.id
+    });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST route for releasing contact (when user backs out)
+app.post("/api/items/:id/release", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    
+    const item = await Item.findById(id);
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    
+    // Check if user is the one who contacted
+    if (item.contactedBy.toString() !== userId.toString()) {
+      return res.status(403).json({ error: "You can only release your own contact" });
+    }
+    
+    // Release the contact
+    item.isContacted = false;
+    item.contactedBy = null;
+    item.contactedAt = null;
+    
+    await item.save();
+    
+    console.log(`🔄 User ${req.user.username} released contact for item: ${item.work || item.productName}`);
+    
+    res.json({ 
+      success: true,
+      message: "Contact released successfully! Item is now available for others."
+    });
+    
+  } catch (err) {
+    console.error("Error releasing contact:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -728,6 +831,32 @@ setInterval(async () => {
     }
   } catch (error) {
     console.error('Error cleaning up expired items:', error);
+  }
+}, 5 * 60 * 1000); // Run every 5 minutes
+
+// Cleanup job to release contacts that are older than 30 minutes
+setInterval(async () => {
+  try {
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const result = await Item.updateMany(
+      {
+        isContacted: true,
+        contactedAt: { $lt: thirtyMinutesAgo }
+      },
+      {
+        $set: {
+          isContacted: false,
+          contactedBy: null,
+          contactedAt: null
+        }
+      }
+    );
+    
+    if (result.modifiedCount > 0) {
+      console.log(`⏰ Released ${result.modifiedCount} contacts due to timeout (30 minutes)`);
+    }
+  } catch (error) {
+    console.error('Error releasing timed out contacts:', error);
   }
 }, 5 * 60 * 1000); // Run every 5 minutes
 
