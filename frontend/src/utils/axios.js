@@ -1,8 +1,21 @@
 import axios from 'axios';
 
 // Create axios instance with default config
+const getBaseURL = () => {
+  // Check if we're in production (Netlify)
+  if (window.location.hostname === 'magnificent-kringle-05c986.netlify.app') {
+    return 'https://project-h-zv5o.onrender.com';
+  }
+  // Use environment variable or fallback to localhost
+  return import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+};
+
+const baseURL = getBaseURL();
+console.log('🌐 Axios baseURL:', baseURL);
+console.log('🌐 Current hostname:', window.location.hostname);
+
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_SERVER_URL || 'http://localhost:5000',
+  baseURL: baseURL,
   timeout: 10000, // Increased timeout for mobile networks
   headers: {
     'Content-Type': 'application/json',
