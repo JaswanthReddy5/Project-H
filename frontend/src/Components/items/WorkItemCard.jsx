@@ -92,7 +92,6 @@ export const WorkItemCard = ({ item }) => {
         phoneNumber: item.sellerPhoneNumber,
         name: item.sellerName
       });
-      alert(`Seller: ${item.sellerName}\nPhone: ${item.sellerPhoneNumber}`);
     } else {
       alert("Phone number not available for this seller.");
     }
