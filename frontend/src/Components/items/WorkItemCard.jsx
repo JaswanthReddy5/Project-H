@@ -115,7 +115,7 @@ export const WorkItemCard = ({ item }) => {
       } else if (error?.code === 'ECONNREFUSED' || error?.message?.includes('ECONNREFUSED')) {
         errorMessage = "Cannot connect to server. Please make sure the server is running.";
       } else if (error?.response?.status === 404) {
-        errorMessage = "Server endpoint not found. Please contact support.";
+        errorMessage = "Interest feature is being updated. Please try again in a few minutes or contact the seller directly.";
       } else if (error?.response?.status === 401) {
         errorMessage = "Please log in again.";
       } else if (error?.response?.data?.error) {
