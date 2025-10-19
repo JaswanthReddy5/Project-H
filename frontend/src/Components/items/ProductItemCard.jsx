@@ -75,7 +75,7 @@ export const ProductItemCard = ({ item }) => {
     }
   }, [item.contactedAt]);
 
-  const handleShowPhone = () => {
+  const handleShowInterest = () => {
     if (!user) {
       alert("Please log in to see contact details.");
       return;
@@ -218,8 +218,8 @@ export const ProductItemCard = ({ item }) => {
           📞 Call {contactInfo.name}
         </button>
       ) : (
-        <button
-          onClick={handleShowPhone}
+        <button 
+          onClick={handleShowInterest}
           disabled={!user || item.sellerId === user?.id || item.sellerId === user?.sub}
           className="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600 transition-colors w-full text-center flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
         >
