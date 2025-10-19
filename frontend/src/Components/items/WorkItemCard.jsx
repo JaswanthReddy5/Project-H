@@ -75,9 +75,9 @@ export const WorkItemCard = ({ item }) => {
     }
   }, [item.contactedAt]);
 
-  const handleShowInterest = async () => {
+  const handleShowPhone = () => {
     if (!user) {
-      alert("Please log in to show interest in this work.");
+      alert("Please log in to see contact details.");
       return;
     }
 
@@ -86,45 +86,15 @@ export const WorkItemCard = ({ item }) => {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      console.log("Showing interest for item:", item._id);
-      console.log("User data:", user);
-      console.log("Server URL:", import.meta.env.VITE_SERVER_URL || 'http://localhost:5000');
-      
-      const response = await itemsAPI.showInterest(item._id);
-      console.log("Interest response:", response);
-      
-      if (response.success) {
-        setContactInfo({
-          phoneNumber: response.sellerPhoneNumber,
-          name: response.sellerName
-        });
-        alert("Interest shown successfully! You can now contact the seller.");
-      }
-    } catch (error) {
-      console.error("Error showing interest:", error);
-      console.error("Error response:", error?.response?.data);
-      console.error("Error code:", error?.code);
-      console.error("Error message:", error?.message);
-      
-      let errorMessage = "Failed to show interest.";
-      
-      if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.code === 'ECONNREFUSED' || error?.message?.includes('ECONNREFUSED')) {
-        errorMessage = "Cannot connect to server. Please make sure the server is running.";
-      } else if (error?.response?.status === 404) {
-        errorMessage = "Interest feature is being updated. Please try again in a few minutes or contact the seller directly.";
-      } else if (error?.response?.status === 401) {
-        errorMessage = "Please log in again.";
-      } else if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
+    // Show phone number directly
+    if (item.sellerPhoneNumber) {
+      setContactInfo({
+        phoneNumber: item.sellerPhoneNumber,
+        name: item.sellerName
+      });
+      alert(`Seller: ${item.sellerName}\nPhone: ${item.sellerPhoneNumber}`);
+    } else {
+      alert("Phone number not available for this seller.");
     }
   };
 
@@ -248,12 +218,12 @@ export const WorkItemCard = ({ item }) => {
           📞 Call {contactInfo.name}
         </button>
       ) : (
-        <button 
-          onClick={handleShowInterest}
-          disabled={isLoading || !user || item.sellerId === user?.id || item.sellerId === user?.sub}
+        <button
+          onClick={handleShowPhone}
+          disabled={!user || item.sellerId === user?.id || item.sellerId === user?.sub}
           className="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600 transition-colors w-full text-center flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
         >
-          {isLoading ? "Showing Interest..." : "🤝 Show Interest"}
+          📞 Show Phone Number
         </button>
       )}
     </div>
