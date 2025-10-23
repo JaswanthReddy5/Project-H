@@ -10,6 +10,7 @@ export const ProductItemCard = ({ item }) => {
   const [contactInfo, setContactInfo] = useState(null);
   const [contactTimeout, setContactTimeout] = useState(null);
   const [isReleasing, setIsReleasing] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Calculate remaining time
   const getRemainingTime = () => {
@@ -129,6 +130,49 @@ export const ProductItemCard = ({ item }) => {
       <div className="flex justify-between w-full mb-2">    
         <p className="font-bold text-lg">{item.productName}</p>
       </div>
+      
+      {/* Image Gallery */}
+      {item.images && item.images.length > 0 && (
+        <div className="w-full mb-4">
+          {/* Main Image Display */}
+          <div className="relative w-full h-48 mb-2">
+            <img
+              src={item.images[selectedImageIndex]}
+              alt={`${item.productName} - Image ${selectedImageIndex + 1}`}
+              className="w-full h-full object-cover rounded-lg border border-gray-600"
+            />
+            {item.images.length > 1 && (
+              <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
+                {selectedImageIndex + 1}/{item.images.length}
+              </div>
+            )}
+          </div>
+          
+          {/* Thumbnail Navigation */}
+          {item.images.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {item.images.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`flex-shrink-0 w-16 h-16 rounded border-2 transition-colors ${
+                    selectedImageIndex === index
+                      ? 'border-cyan-400'
+                      : 'border-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`Thumbnail ${index + 1}`}
+                    className="w-full h-full object-cover rounded"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
       <p className="text-yellow-400 text-xl">₹{item.price}</p>
       <p className="text-gray-400">Description: {item.quantity}</p>
       {remainingTime && (

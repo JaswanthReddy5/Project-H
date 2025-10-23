@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaImage, FaTimes } from "react-icons/fa";
 import { useAuth } from '../../context/AuthContext';
 import { itemsAPI } from '../../services/api';
 
@@ -16,6 +16,8 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
     quantity: "",
     productTime: "", // Add expiration time for products
   });
+  const [images, setImages] = useState([]);
+  const [imageErrors, setImageErrors] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [lastSubmission, setLastSubmission] = useState(0);
@@ -33,6 +35,161 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
   const handleChange = (e) => {
     const sanitizedValue = sanitizeInput(e.target.value);
     setFormData({ ...formData, [e.target.name]: sanitizedValue });
+  };
+
+  // Image handling functions
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setImageErrors("");
+    
+    // Check if adding these files would exceed the limit
+    if (images.length + files.length > 4) {
+      setImageErrors("Maximum 4 images allowed");
+      return;
+    }
+
+    // Validate file types and sizes
+    const validFiles = [];
+    const invalidFiles = [];
+
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        invalidFiles.push(`${file.name} is not an image`);
+      } else if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        invalidFiles.push(`${file.name} is too large (max 5MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      setImageErrors(invalidFiles.join(', '));
+    }
+
+    if (validFiles.length > 0) {
+      // Content moderation for each valid file
+      validFiles.forEach(file => {
+        validateImageContent(file);
+      });
+    }
+  };
+
+  // Content moderation function
+  const validateImageContent = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Basic content analysis
+        const isInappropriate = analyzeImageContent(img, file.name);
+        
+        if (isInappropriate) {
+          setImageErrors("Inappropriate content detected. Please upload only product images.");
+          return;
+        }
+        
+        // If content is appropriate, add to images
+        setImages(prev => [...prev, {
+          file: file,
+          preview: e.target.result,
+          name: file.name
+        }]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Image content analysis function
+  const analyzeImageContent = (img, fileName) => {
+    // Check filename for inappropriate keywords
+    const inappropriateKeywords = [
+      'porn', 'xxx', 'sex', 'nude', 'naked', 'adult', 'explicit',
+      'woman', 'girl', 'female', 'lady', 'bikini', 'lingerie',
+      'selfie', 'portrait', 'face', 'person', 'people'
+    ];
+    
+    const fileNameLower = fileName.toLowerCase();
+    const hasInappropriateKeyword = inappropriateKeywords.some(keyword => 
+      fileNameLower.includes(keyword)
+    );
+    
+    if (hasInappropriateKeyword) {
+      return true;
+    }
+
+    // Basic image analysis
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Analyze image characteristics
+    const analysis = analyzeImagePixels(data, canvas.width, canvas.height);
+    
+    // Flag potential inappropriate content
+    if (analysis.skinToneRatio > 0.3 || analysis.faceLikePatterns > 0.1) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Analyze image pixels for inappropriate content
+  const analyzeImagePixels = (data, width, height) => {
+    let skinTonePixels = 0;
+    let faceLikePatterns = 0;
+    let totalPixels = width * height;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      
+      // Detect skin tone colors
+      if (isSkinTone(r, g, b)) {
+        skinTonePixels++;
+      }
+      
+      // Detect face-like patterns (simplified)
+      if (isFaceLikePattern(r, g, b)) {
+        faceLikePatterns++;
+      }
+    }
+    
+    return {
+      skinToneRatio: skinTonePixels / totalPixels,
+      faceLikePatterns: faceLikePatterns / totalPixels
+    };
+  };
+
+  // Detect skin tone colors
+  const isSkinTone = (r, g, b) => {
+    // Skin tone detection based on RGB ranges
+    return (
+      r > 95 && g > 40 && b > 20 &&
+      r > g && r > b &&
+      Math.abs(r - g) > 15 &&
+      r > 30 && g > 30 && b > 30
+    );
+  };
+
+  // Detect face-like patterns (simplified)
+  const isFaceLikePattern = (r, g, b) => {
+    // Very basic pattern detection
+    return (
+      r > 100 && g > 80 && b > 60 &&
+      r < 200 && g < 180 && b < 160
+    );
+  };
+
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImageErrors("");
   };
 
   const validate = () => {
@@ -150,6 +307,7 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
           price: formData.price,
           quantity: formData.quantity,
           time: formData.productTime, // Add expiration time for products
+          images: images.map(img => img.preview), // Include base64 images
         };
       }
 
@@ -158,6 +316,8 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
       await itemsAPI.addItem(itemData);
       alert("Item added successfully!");
       setFormData({ work: "", amount: "", time: "", productName: "", price: "", quantity: "", productTime: "" });
+      setImages([]);
+      setImageErrors("");
       onSuccess();
     } catch (error) {
       console.error("Error adding item:", error);
@@ -288,6 +448,79 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
             className="h-15 bg-gradient-to-b from-white to-cyan-400 p-4 rounded-lg text-black w-full" 
           />
           {errors.productTime && <div className="text-red-400 text-sm ml-2">{errors.productTime}</div>}
+          
+          {/* Image Upload Section */}
+          <div className="space-y-3">
+            <label className="block text-cyan-400 text-sm font-medium">
+              Product Images (Max 4 images, 5MB each)
+            </label>
+            <div className="bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-lg p-3">
+              <p className="text-yellow-300 text-xs">
+                <strong>Content Policy:</strong> Only product images are allowed. 
+                No inappropriate content, pornography, or personal photos (including female photos) will be accepted.
+                Uploads are automatically screened for compliance.
+              </p>
+            </div>
+            
+            {/* Image Upload Button */}
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+                disabled={images.length >= 4}
+              />
+              <label
+                htmlFor="image-upload"
+                className={`flex items-center justify-center p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                  images.length >= 4
+                    ? 'border-gray-600 text-gray-500 cursor-not-allowed'
+                    : 'border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black'
+                }`}
+              >
+                <FaImage className="mr-2" />
+                {images.length >= 4 ? 'Maximum images reached' : 'Choose Images'}
+              </label>
+            </div>
+            
+            {/* Image Preview Grid */}
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                {images.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image.preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FaTimes size={12} />
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                      {image.name.length > 15 ? `${image.name.substring(0, 15)}...` : image.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Image Error Messages */}
+            {imageErrors && (
+              <div className="text-red-400 text-sm">{imageErrors}</div>
+            )}
+            
+            {/* Image Count Indicator */}
+            <div className="text-gray-400 text-sm">
+              {images.length}/4 images uploaded
+            </div>
+          </div>
           
           {/* Quick time presets for products */}
           <div className="flex flex-wrap gap-2 mt-2">

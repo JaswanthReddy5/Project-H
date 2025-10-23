@@ -58,6 +58,43 @@ function isInappropriate(raw) {
   return BANNED_REGEXES.some(r => r.test(raw));
 }
 
+// Image content moderation function
+function validateImages(images) {
+  if (!images || !Array.isArray(images)) return true;
+  
+  for (const image of images) {
+    if (!image || typeof image !== 'string') continue;
+    
+    // Check if image is base64 encoded
+    if (!image.startsWith('data:image/')) {
+      return false; // Invalid image format
+    }
+    
+    // Basic content analysis on base64 image
+    // This is a simplified check - in production, you'd want more sophisticated analysis
+    const imageData = image.split(',')[1]; // Remove data:image/...;base64, prefix
+    const binaryString = atob(imageData);
+    
+    // Check for suspicious patterns in image data
+    // This is a basic heuristic - real implementation would use ML models
+    const suspiciousPatterns = [
+      'nude', 'porn', 'sex', 'adult', 'explicit',
+      'woman', 'girl', 'female', 'selfie', 'portrait'
+    ];
+    
+    // Convert to lowercase for checking
+    const lowerBinary = binaryString.toLowerCase();
+    
+    for (const pattern of suspiciousPatterns) {
+      if (lowerBinary.includes(pattern)) {
+        return false; // Suspicious content detected
+      }
+    }
+  }
+  
+  return true; // All images passed validation
+}
+
 // Middleware scans common text fields on create/update item or messages
 const contentModeration = (req, res, next) => {
   const candidateFields = [
@@ -74,6 +111,16 @@ const contentModeration = (req, res, next) => {
     return res.status(400).json({
       error: 'Content rejected: Off-topic or unsafe request detected. Keep posts professional and strictly legal/work/product related.'
     });
+  }
+
+  // Validate images if present
+  if (req.body.images) {
+    const imagesValid = validateImages(req.body.images);
+    if (!imagesValid) {
+      return res.status(400).json({
+        error: 'Image content rejected: Inappropriate content detected. Please upload only product images.'
+      });
+    }
   }
 
   next();
