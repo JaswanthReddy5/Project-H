@@ -454,13 +454,6 @@ export const AddItemForm = ({ onCancel, onSuccess }) => {
             <label className="block text-cyan-400 text-sm font-medium">
               Product Images (Max 4 images, 5MB each)
             </label>
-            <div className="bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-lg p-3">
-              <p className="text-yellow-300 text-xs">
-                <strong>Content Policy:</strong> Only product images are allowed. 
-                No inappropriate content, pornography, or personal photos (including female photos) will be accepted.
-                Uploads are automatically screened for compliance.
-              </p>
-            </div>
             
             {/* Image Upload Button */}
             <div className="relative">
