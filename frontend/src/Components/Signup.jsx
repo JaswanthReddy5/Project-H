@@ -8,7 +8,6 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    confirmPassword: '',
     phoneNumber: ''
   });
   const [error, setError] = useState('');
@@ -27,12 +26,6 @@ const Signup = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const response = await axios.post('/api/auth/register', {
@@ -103,19 +96,6 @@ const Signup = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="new Password(Atleast 6 characters)"
-              className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          <div>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm new Password"
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
               disabled={isLoading}
