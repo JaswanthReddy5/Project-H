@@ -16,16 +16,38 @@ const Signup = () => {
   const { login } = useAuth();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    // Special handling for phone number - only allow 10 digits
+    if (name === 'phoneNumber') {
+      // Remove all non-digit characters
+      const digitsOnly = value.replace(/\D/g, '');
+      // Limit to 10 digits
+      if (digitsOnly.length <= 10) {
+        setFormData({
+          ...formData,
+          [name]: digitsOnly
+        });
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    // Validate phone number
+    if (formData.phoneNumber.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.post('/api/auth/register', {
@@ -82,7 +104,8 @@ const Signup = () => {
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
-              placeholder="Phone Number (e.g., +1234567890)"
+              placeholder="Phone Number (10 digits)"
+              maxLength={10}
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
               required
               disabled={isLoading}

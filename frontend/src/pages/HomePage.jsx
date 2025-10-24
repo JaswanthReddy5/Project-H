@@ -14,18 +14,18 @@ export const HomePage = () => {
     if (location.state && typeof location.state.activeIndex === 'number') {
       return location.state.activeIndex;
     }
-    return 0; // Default to first tab (Work)
+    return 0; // Default to first tab (Home)
   });
   const [showForm, setShowForm] = useState(false);
 
   const renderCurrentPage = () => {
     switch(activeIndex) {
       case 0:
-        // First tab shows Food (Restaurants)
-        return <RestaurantsPage />;
-      case 1:
-        // Second tab shows Home (WorkPage)
+        // First tab shows Home (WorkPage)
         return <WorkPage />;
+      case 1:
+        // Second tab shows Food (Restaurants)
+        return <RestaurantsPage />;
       case 3:
         // Fourth tab shows Products
         return <ProductsPage />;
@@ -33,7 +33,7 @@ export const HomePage = () => {
         // Fifth tab shows Profile
         return <ProfilePage />;
       default:
-        return <RestaurantsPage />;
+        return <WorkPage />;
     }
   };
 

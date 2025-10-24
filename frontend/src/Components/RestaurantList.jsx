@@ -17,12 +17,19 @@ const extractGoogleDriveFileId = (url) => {
 
 // Memoized Restaurant Card Component
 const RestaurantCard = memo(({ restaurant, onCall, onMenuClick }) => (
-  <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200">
+  <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg group relative hover:shadow-cyan-500/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:rotate-1">
+    {/* Glowing orb effect on hover */}
+    <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/10 to-cyan-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg"></div>
+    <div className="absolute inset-0 bg-gradient-to-br from-cyan-300/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
     <img 
       src={restaurant.imageUrl} 
       alt={restaurant.name}
-      className="w-full h-48 object-cover"
+      className="w-full h-48 object-cover object-center"
       loading="lazy"
+      style={{ 
+        objectFit: 'cover',
+        objectPosition: 'center'
+      }}
       onError={(e) => {
         e.target.onerror = null;
         e.target.src = "https://placehold.co/400x300/1a1a1a/ffffff?text=No+Image";
@@ -34,16 +41,22 @@ const RestaurantCard = memo(({ restaurant, onCall, onMenuClick }) => (
         {restaurant.name !== "Zinger" && restaurant.name !== "Shakes and Desserts" && (
           <button
             onClick={() => onCall(restaurant.phoneNumber)}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-200 flex items-center gap-2"
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all duration-300 flex items-center gap-2 relative overflow-hidden group"
           >
-            <FaPhone /> Call
+            <span className="relative z-10 flex items-center gap-2">
+              <FaPhone /> Call
+            </span>
+            <div className="absolute inset-0 bg-green-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
+            <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
           </button>
         )}
         <button
           onClick={() => onMenuClick(restaurant.menuUrl)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-all duration-300 relative overflow-hidden group"
         >
-          Menu
+          <span className="relative z-10">Menu</span>
+          <div className="absolute inset-0 bg-blue-400 opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity duration-200"></div>
+          <div className="absolute inset-0 bg-white opacity-0 group-active:opacity-20 group-active:animate-ripple"></div>
         </button>
       </div>
     </div>
@@ -273,10 +286,49 @@ export const RestaurantList = memo(() => {
   }, []);
 
   return (
-    <div className="p-6 bg-black min-h-screen text-white">
+    <div className="p-6 bg-black min-h-screen text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Floating Food Icons */}
+        <div className="absolute top-10 left-10 text-4xl opacity-20 animate-float-slow">🍕</div>
+        <div className="absolute top-32 right-16 text-3xl opacity-15 animate-float-medium">🍔</div>
+        <div className="absolute top-64 left-1/4 text-5xl opacity-10 animate-float-fast">🍜</div>
+        <div className="absolute top-96 right-1/3 text-3xl opacity-20 animate-float-slow">🍰</div>
+        <div className="absolute top-1/3 left-1/2 text-4xl opacity-15 animate-float-medium">🍖</div>
+        <div className="absolute top-2/3 right-1/4 text-3xl opacity-10 animate-float-fast">🥘</div>
+        <div className="absolute top-1/4 right-10 text-4xl opacity-20 animate-float-slow">🍝</div>
+        <div className="absolute top-3/4 left-16 text-3xl opacity-15 animate-float-medium">🍤</div>
+        
+        {/* Kitchen Utensil Silhouettes */}
+        <div className="absolute top-20 right-1/4 text-6xl opacity-5 animate-float-slow">🔪</div>
+        <div className="absolute top-40 left-1/3 text-5xl opacity-8 animate-float-medium">🍴</div>
+        <div className="absolute top-60 right-1/2 text-4xl opacity-6 animate-float-fast">🥄</div>
+        <div className="absolute top-80 left-1/5 text-5xl opacity-7 animate-float-slow">🍽️</div>
+        
+        {/* Steam Effects */}
+        <div className="absolute bottom-0 left-0 w-full h-32 pointer-events-none">
+          <div className="absolute bottom-0 left-1/4 w-2 h-16 bg-gradient-to-t from-cyan-400/20 to-transparent rounded-full animate-steam-1"></div>
+          <div className="absolute bottom-0 left-1/2 w-1 h-20 bg-gradient-to-t from-cyan-300/15 to-transparent rounded-full animate-steam-2"></div>
+          <div className="absolute bottom-0 right-1/3 w-2 h-14 bg-gradient-to-t from-cyan-500/25 to-transparent rounded-full animate-steam-3"></div>
+          <div className="absolute bottom-0 right-1/4 w-1 h-18 bg-gradient-to-t from-cyan-400/20 to-transparent rounded-full animate-steam-1"></div>
+        </div>
+      </div>
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-cyan-400 text-xl">Loading restaurants...</div>
+        <div className="flex justify-center items-center h-64 relative">
+          {/* Animated food icons during loading */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-10 left-10 text-4xl opacity-30 animate-bounce">🍕</div>
+            <div className="absolute top-20 right-16 text-3xl opacity-25 animate-pulse">🍔</div>
+            <div className="absolute top-32 left-1/4 text-5xl opacity-20 animate-bounce">🍜</div>
+            <div className="absolute top-40 right-1/3 text-3xl opacity-30 animate-pulse">🍰</div>
+            <div className="absolute top-16 left-1/2 text-4xl opacity-25 animate-bounce">🍖</div>
+            <div className="absolute top-24 right-1/4 text-3xl opacity-20 animate-pulse">🥘</div>
+            <div className="absolute top-8 right-10 text-4xl opacity-30 animate-bounce">🍝</div>
+            <div className="absolute top-36 left-16 text-3xl opacity-25 animate-pulse">🍤</div>
+            <div className="absolute top-12 right-1/2 text-4xl opacity-20 animate-bounce">🍗</div>
+            <div className="absolute top-28 left-1/3 text-3xl opacity-30 animate-pulse">🥗</div>
+          </div>
+          <div className="text-cyan-400 text-xl z-10">Loading restaurants...</div>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center h-64">
